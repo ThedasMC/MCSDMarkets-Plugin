@@ -1,0 +1,6 @@
+#errors
+web-error: '&c[MCSDMarkets]Error performing action: {error}'
+invalid-material: '&c[MCSDMarkets]Invalid material!'
+
+#non-error
+check-price: '&2[MCSDMarkets]&7Current Price: &2${price}'

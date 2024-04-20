@@ -1,0 +1,5 @@
+#This plugin allows you to buy and sell items that fluctuate in price according to supply and demand.
+#The supply and demand is determined all servers running this plugin.
+#It is essentially a global market and allows trading similar to stocks, but with items.
+#Register for an api key at https://thedasmc.tebex.io there is a free option
+api-key: null
