@@ -1,4 +1,4 @@
-package com.thedasmc.mcsdmarketsplugin.support;
+package com.thedasmc.mcsdmarketsplugin.support.messages;
 
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -9,7 +9,11 @@ public enum Message {
 
     WEB_ERROR("web-error"),
     INVALID_MATERIAL("invalid-material"),
-    CHECK_PRICE("check-price");
+    INVALID_QUANTITY("invalid-quantity"),
+    VAULT_WITHDRAW_ERROR("vault-withdraw-error"),
+    NO_INVENTORY_SPACE("no-inventory-space"),
+    CHECK_PRICE("check-price"),
+    PURCHASE("purchase-successful");
 
     private static FileConfiguration messagesConfig;
 

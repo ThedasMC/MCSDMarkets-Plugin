@@ -1,9 +1,10 @@
-package com.thedasmc.mcsdmarketsplugin.support;
+package com.thedasmc.mcsdmarketsplugin.support.messages;
 
 public enum Placeholder {
 
     ERROR("{error}"),
-    PRICE("{price}");
+    PRICE("{price}"),
+    ITEM("{item}");
 
     private final String value;
 

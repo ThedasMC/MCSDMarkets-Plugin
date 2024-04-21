@@ -1,10 +1,12 @@
 package com.thedasmc.mcsdmarketsplugin;
 
 import co.aikar.commands.BukkitCommandManager;
+import co.aikar.commands.ConditionFailedException;
 import co.aikar.commands.PaperCommandManager;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsplugin.commands.CheckPriceCommand;
-import com.thedasmc.mcsdmarketsplugin.support.Message;
+import com.thedasmc.mcsdmarketsplugin.commands.TransactionCommands;
+import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -43,8 +45,8 @@ public class MCSDMarkets extends JavaPlugin {
             return;
         }
 
-        initCommandManager();
         Message.setMessagesConfig(YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml")));
+        initCommandManager();
     }
 
     private boolean initMCSDMarketsAPI(FileConfiguration config) {
@@ -53,7 +55,7 @@ public class MCSDMarkets extends JavaPlugin {
         if (apiKey == null || apiKey.trim().isEmpty())
             return false;
 
-        this.mcsdMarketsAPI = new MCSDMarketsAPI(apiKey);
+        this.mcsdMarketsAPI = new MCSDMarketsAPI(apiKey, true);
         return true;
     }
 
@@ -71,20 +73,30 @@ public class MCSDMarkets extends JavaPlugin {
     }
 
     private void initCommandManager() {
+        BukkitCommandManager commandManager = new PaperCommandManager(this);
+
+        //Command completions
         List<String> materialNames = Arrays.stream(Material.values())
             .map(Material::name)
             .filter(name -> !name.startsWith("LEGACY_"))
             .collect(Collectors.toCollection(LinkedList::new));
 
-        BukkitCommandManager commandManager = new PaperCommandManager(this);
-
         commandManager.getCommandCompletions().registerAsyncCompletion("materials", context -> materialNames.stream()
             .filter(name -> name.startsWith(context.getInput().trim().toUpperCase()))
             .collect(Collectors.toList()));
 
+        //Dependencies
         commandManager.registerDependency(Economy.class, this.economy);
         commandManager.registerDependency(MCSDMarketsAPI.class, this.mcsdMarketsAPI);
 
+        //Conditions
+        commandManager.getCommandConditions().addCondition(Integer.class, "gt0", ((context, execContext, value) -> {
+            if (value <= 0)
+                throw new ConditionFailedException(Message.INVALID_QUANTITY.getText());
+        }));
+
+        //Commands
         commandManager.registerCommand(new CheckPriceCommand());
+        commandManager.registerCommand(new TransactionCommands());
     }
 }

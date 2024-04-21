@@ -6,9 +6,9 @@ import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsapi.response.impl.ItemResponse;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.ItemResponseWrapper;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
-import com.thedasmc.mcsdmarketsplugin.support.Message;
-import com.thedasmc.mcsdmarketsplugin.support.MessageVariable;
-import com.thedasmc.mcsdmarketsplugin.support.Placeholder;
+import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
+import com.thedasmc.mcsdmarketsplugin.support.messages.MessageVariable;
+import com.thedasmc.mcsdmarketsplugin.support.messages.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
@@ -30,7 +30,7 @@ public class CheckPriceCommand extends BaseCommand {
     @Description("Check the current price of an item.")
     @CommandCompletion("@materials")
     public void handleCheckCommand(CommandSender sender, String materialName) {
-        Material material = Material.getMaterial(materialName);
+        Material material = Material.getMaterial(materialName.trim().toUpperCase());
 
         if (material == null) {
             sender.sendMessage(Message.INVALID_MATERIAL.getText());

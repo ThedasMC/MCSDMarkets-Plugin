@@ -1,4 +1,4 @@
-package com.thedasmc.mcsdmarketsplugin.support;
+package com.thedasmc.mcsdmarketsplugin.support.messages;
 
 public class MessageVariable {
 

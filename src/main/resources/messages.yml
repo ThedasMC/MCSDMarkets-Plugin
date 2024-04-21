@@ -1,6 +1,10 @@
 #errors
 web-error: '&c[MCSDMarkets]Error performing action: {error}'
 invalid-material: '&c[MCSDMarkets]Invalid material!'
+invalid-quantity: '&c[MCSDMarkets]Quantity must be > 0!'
+vault-withdraw-error: '&c[MCSDMarkets]{error}'
+no-inventory-space: '&c[MCSDMarkets]You don''t have enough inventory space!'
 
 #non-error
 check-price: '&2[MCSDMarkets]&7Current Price: &2${price}'
+purchase-successful: '&2[MCSDMarkets]&7Bought {item} for &2${price}'
