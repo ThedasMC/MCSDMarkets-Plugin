@@ -15,7 +15,8 @@ public enum Message {
     INSUFFICIENT_QUANTITY("insufficient-quantity"),
     CHECK_PRICE("check-price"),
     PURCHASE("purchase-successful"),
-    SALE_SUCCESSFUL("sale-successful");
+    SALE_SUCCESSFUL("sale-successful"),
+    CONTRACT_CREATED("contract-created");
 
     private static FileConfiguration messagesConfig;
 

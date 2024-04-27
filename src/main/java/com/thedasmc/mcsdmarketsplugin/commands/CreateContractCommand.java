@@ -1,0 +1,86 @@
+package com.thedasmc.mcsdmarketsplugin.commands;
+
+import co.aikar.commands.BaseCommand;
+import co.aikar.commands.annotation.*;
+import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
+import com.thedasmc.mcsdmarketsplugin.support.ItemUtil;
+import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+
+import java.util.Map;
+
+import static com.thedasmc.mcsdmarketsplugin.support.Constants.BASE_COMMAND;
+import static com.thedasmc.mcsdmarketsplugin.support.Constants.CREATE_CONTRACT_PERMISSION;
+
+@CommandAlias(BASE_COMMAND)
+public class CreateContractCommand extends BaseCommand {
+
+    @Dependency private MCSDMarkets plugin;
+
+    @Subcommand("contract create")
+    @CommandPermission(CREATE_CONTRACT_PERMISSION)
+    @Syntax("<material> [quantity]")
+    @Description("Take a specified amount of the specified material from your inventory and add to a contract item or create a new one")
+    @CommandCompletion("@materials")
+    public void handleCreateContractCommand(Player player, String materialName, @Optional @Conditions("gt0") final Integer quantity) {
+        Material material = Material.getMaterial(materialName.trim().toUpperCase());
+
+        if (material == null) {
+            player.sendMessage(Message.INVALID_MATERIAL.getText());
+            return;
+        }
+
+        final boolean takeAll = quantity == null;
+        Inventory inventory = player.getInventory();
+        Map<Integer, ? extends ItemStack> items = inventory.all(material);
+
+        int foundQuantity = 0;
+        int taken = 0;
+        for (Map.Entry<Integer, ? extends ItemStack> entry : items.entrySet()) {
+            int slot = entry.getKey();
+            ItemStack itemStack = entry.getValue();
+            int amount = itemStack.getAmount();
+            foundQuantity += amount;
+
+            if (!takeAll && foundQuantity > quantity) {
+                int newAmount = foundQuantity - quantity;
+                itemStack.setAmount(newAmount);
+                taken += amount - newAmount;
+            } else {
+                inventory.setItem(slot, null);
+                taken += amount;
+            }
+
+            if (!takeAll && foundQuantity >= quantity)
+                break;
+        }
+
+        if ((!takeAll && foundQuantity < quantity) || (takeAll && taken == 0)) {
+            if (taken > 0)
+                inventory.addItem(new ItemStack(material, taken));
+
+            player.sendMessage(Message.INSUFFICIENT_QUANTITY.getText());
+            return;
+        }
+
+        ItemStack existingContractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, inventory);
+
+        if (existingContractItem == null && inventory.firstEmpty() == -1) {
+            inventory.addItem(new ItemStack(material, taken));
+            player.sendMessage(Message.NO_INVENTORY_SPACE.getText());
+            return;
+        }
+
+        if (existingContractItem == null) {
+            inventory.addItem(ItemUtil.getPurchaseContractItem(plugin, material, taken));
+        } else {
+            ItemUtil.addQuantity(plugin, existingContractItem, taken);
+        }
+
+        player.sendMessage(Message.CONTRACT_CREATED.getText());
+    }
+
+}

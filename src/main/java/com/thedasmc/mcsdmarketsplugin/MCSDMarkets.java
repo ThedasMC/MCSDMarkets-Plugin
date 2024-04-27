@@ -6,6 +6,7 @@ import co.aikar.commands.PaperCommandManager;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsplugin.commands.BuyCommand;
 import com.thedasmc.mcsdmarketsplugin.commands.CheckPriceCommand;
+import com.thedasmc.mcsdmarketsplugin.commands.CreateContractCommand;
 import com.thedasmc.mcsdmarketsplugin.commands.SellCommand;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import net.milkbowl.vault.economy.Economy;
@@ -92,7 +93,8 @@ public class MCSDMarkets extends JavaPlugin {
 
         //Conditions
         commandManager.getCommandConditions().addCondition(Integer.class, "gt0", ((context, execContext, value) -> {
-            if (value <= 0)
+            //Null value will not be validated
+            if (value != null && value <= 0)
                 throw new ConditionFailedException(Message.INVALID_QUANTITY.getText());
         }));
 
@@ -100,5 +102,6 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerCommand(new CheckPriceCommand());
         commandManager.registerCommand(new BuyCommand());
         commandManager.registerCommand(new SellCommand());
+        commandManager.registerCommand(new CreateContractCommand());
     }
 }
