@@ -11,17 +11,20 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
 
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.CONTRACT_ITEM_MATERIAL;
 
 public class ItemUtil {
 
+    /**
+     * Get a new purchase contract item
+     * @param plugin The plugin
+     * @param material The material for the contract material
+     * @param quantity The quantity of the material
+     * @return An {@link ItemStack} representing the contract item
+     */
     public static ItemStack getPurchaseContractItem(MCSDMarkets plugin, Material material, Integer quantity) {
         ItemStack itemStack = new ItemStack(CONTRACT_ITEM_MATERIAL);
         ItemMeta itemMeta = Objects.requireNonNull(itemStack.getItemMeta());
@@ -143,7 +146,7 @@ public class ItemUtil {
      * Subtract the contract item's quantity
      * @param plugin The plugin
      * @param itemStack The {@link ItemStack} that is also a contract item
-     * @param toAdd The amount to subtract
+     * @param toSubtract The amount to subtract
      */
     public static void subtractQuantity(MCSDMarkets plugin, ItemStack itemStack, Integer toSubtract) {
         modifyQuantity(plugin, itemStack, toSubtract, false);
