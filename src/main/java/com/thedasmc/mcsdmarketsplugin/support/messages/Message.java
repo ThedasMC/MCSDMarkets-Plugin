@@ -12,8 +12,10 @@ public enum Message {
     INVALID_QUANTITY("invalid-quantity"),
     VAULT_WITHDRAW_ERROR("vault-withdraw-error"),
     NO_INVENTORY_SPACE("no-inventory-space"),
+    INSUFFICIENT_QUANTITY("insufficient-quantity"),
     CHECK_PRICE("check-price"),
-    PURCHASE("purchase-successful");
+    PURCHASE("purchase-successful"),
+    SALE_SUCCESSFUL("sale-successful");
 
     private static FileConfiguration messagesConfig;
 

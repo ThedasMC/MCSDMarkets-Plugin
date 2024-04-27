@@ -4,7 +4,9 @@ invalid-material: '&c[MCSDMarkets]Invalid material!'
 invalid-quantity: '&c[MCSDMarkets]Quantity must be > 0!'
 vault-withdraw-error: '&c[MCSDMarkets]{error}'
 no-inventory-space: '&c[MCSDMarkets]You don''t have enough inventory space!'
+insufficient-quantity: '&c[MCSDMarkets]You don''t have enough to sell! Reduce the amount your trying to sell.'
 
 #non-error
 check-price: '&2[MCSDMarkets]&7Current Price: &2${price}'
 purchase-successful: '&2[MCSDMarkets]&7Bought {item} for &2${price}'
+sale-successful: '&2[MCSDMarkets]&7Sold {item} for &2${price}'

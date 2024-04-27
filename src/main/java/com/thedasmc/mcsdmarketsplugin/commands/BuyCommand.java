@@ -30,7 +30,7 @@ import static com.thedasmc.mcsdmarketsplugin.support.Constants.BASE_COMMAND;
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.BUY_COMMAND_PERMISSION;
 
 @CommandAlias(BASE_COMMAND)
-public class TransactionCommands extends BaseCommand {
+public class BuyCommand extends BaseCommand {
 
     @Dependency private MCSDMarkets plugin;
     @Dependency private MCSDMarketsAPI mcsdMarketsAPI;
@@ -106,10 +106,16 @@ public class TransactionCommands extends BaseCommand {
             }
 
             Bukkit.getScheduler().runTask(plugin, () -> {
-                ItemStack itemStack = ItemUtil.getPurchaseContractItem(plugin, material, quantity);
+                ItemStack existingContractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, player.getInventory());
 
-                if (!player.getInventory().addItem(itemStack).isEmpty()) {
-                    player.getLocation().getWorld().dropItem(player.getLocation(), itemStack);
+                if (existingContractItem == null) {
+                    ItemStack itemStack = ItemUtil.getPurchaseContractItem(plugin, material, quantity);
+
+                    if (!player.getInventory().addItem(itemStack).isEmpty()) {
+                        player.getLocation().getWorld().dropItem(player.getLocation(), itemStack);
+                    }
+                } else {
+                    ItemUtil.addQuantity(plugin, existingContractItem, quantity);
                 }
 
                 MessageVariable itemVariable = new MessageVariable(Placeholder.ITEM, material.name());
