@@ -4,10 +4,7 @@ import co.aikar.commands.BukkitCommandManager;
 import co.aikar.commands.ConditionFailedException;
 import co.aikar.commands.PaperCommandManager;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
-import com.thedasmc.mcsdmarketsplugin.commands.BuyCommand;
-import com.thedasmc.mcsdmarketsplugin.commands.CheckPriceCommand;
-import com.thedasmc.mcsdmarketsplugin.commands.CreateContractCommand;
-import com.thedasmc.mcsdmarketsplugin.commands.SellCommand;
+import com.thedasmc.mcsdmarketsplugin.commands.*;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Material;
@@ -103,5 +100,6 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerCommand(new BuyCommand());
         commandManager.registerCommand(new SellCommand());
         commandManager.registerCommand(new CreateContractCommand());
+        commandManager.registerCommand(new WithdrawContractCommand());
     }
 }

@@ -16,7 +16,8 @@ public enum Message {
     CHECK_PRICE("check-price"),
     PURCHASE("purchase-successful"),
     SALE_SUCCESSFUL("sale-successful"),
-    CONTRACT_CREATED("contract-created");
+    CONTRACT_CREATED("contract-created"),
+    CONTRACT_WITHDRAWAL("contract-withdrawal");
 
     private static FileConfiguration messagesConfig;
 

@@ -11,5 +11,6 @@ public class Constants {
     public static final String CHECK_COMMAND_PERMISSION = "mcsd.check";
     public static final String BUY_COMMAND_PERMISSION = "mcsd.buy";
     public static final String CREATE_CONTRACT_PERMISSION = "mcsd.contract.create";
+    public static final String WITHDRAW_CONTRACT_PERMISSION = "mcsd.contract.withdraw";
 
 }
