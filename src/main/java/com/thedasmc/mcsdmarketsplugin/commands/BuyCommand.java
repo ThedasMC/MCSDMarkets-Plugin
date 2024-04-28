@@ -42,11 +42,6 @@ public class BuyCommand extends BaseCommand {
     @Description("Buy items")
     @CommandCompletion("@materials")
     public void handleBuyCommand(Player player, String materialName, @Conditions("gt0") Integer quantity) {
-        if (player.getInventory().firstEmpty() == -1) {
-            player.sendMessage(Message.NO_INVENTORY_SPACE.getText());
-            return;
-        }
-
         Material material = Material.getMaterial(materialName.trim().toUpperCase());
 
         if (material == null) {
@@ -84,6 +79,33 @@ public class BuyCommand extends BaseCommand {
                 return;
             }
 
+            boolean addedContractItem;
+
+            try {
+                addedContractItem = Bukkit.getScheduler().callSyncMethod(plugin, () -> {
+                    ItemStack existingContractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, player.getInventory());
+
+                    if (existingContractItem == null) {
+                        ItemStack itemStack = ItemUtil.getPurchaseContractItem(plugin, material, quantity);
+
+                        if (!player.getInventory().addItem(itemStack).isEmpty()) {
+                            economy.depositPlayer(player, cost.doubleValue());
+                            player.sendMessage(Message.NO_INVENTORY_SPACE.getText());
+                            return false;
+                        }
+                    } else {
+                        ItemUtil.addQuantity(plugin, existingContractItem, quantity);
+                    }
+
+                    return true;
+                }).get(3, TimeUnit.SECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                throw new RuntimeException("Failed to call sync method to add contract item to inventory!", e);
+            }
+
+            if (!addedContractItem)
+                return;
+
             CreateTransactionRequest request = new CreateTransactionRequest();
             request.setPlayerId(player.getUniqueId());
             request.setTransactionType(TransactionType.PURCHASE);
@@ -100,28 +122,13 @@ public class BuyCommand extends BaseCommand {
             }
 
             if (!createTransactionResponseWrapper.isSuccessful()) {
-                Bukkit.getScheduler().callSyncMethod(plugin, () -> economy.depositPlayer(player, cost.doubleValue()));
-                player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, createTransactionResponseWrapper.getErrorResponse().getMessage())));
-                return;
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    economy.depositPlayer(player, cost.doubleValue());
+                    ItemStack contractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, player.getInventory());
+                    ItemUtil.subtractQuantity(plugin, contractItem, quantity);
+                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, createTransactionResponseWrapper.getErrorResponse().getMessage())));
+                });
             }
-
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                ItemStack existingContractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, player.getInventory());
-
-                if (existingContractItem == null) {
-                    ItemStack itemStack = ItemUtil.getPurchaseContractItem(plugin, material, quantity);
-
-                    if (!player.getInventory().addItem(itemStack).isEmpty()) {
-                        player.getLocation().getWorld().dropItem(player.getLocation(), itemStack);
-                    }
-                } else {
-                    ItemUtil.addQuantity(plugin, existingContractItem, quantity);
-                }
-
-                MessageVariable itemVariable = new MessageVariable(Placeholder.ITEM, material.name());
-                MessageVariable priceVariable = new MessageVariable(Placeholder.PRICE, cost.toPlainString());
-                player.sendMessage(Message.PURCHASE.getText(itemVariable, priceVariable));
-            });
         });
     }
 
