@@ -11,6 +11,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.BASE_COMMAND;
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.WITHDRAW_CONTRACT_PERMISSION;
@@ -18,20 +19,23 @@ import static com.thedasmc.mcsdmarketsplugin.support.Constants.WITHDRAW_CONTRACT
 @CommandAlias(BASE_COMMAND)
 public class WithdrawContractCommand extends BaseCommand {
 
-    @Dependency private MCSDMarkets plugin;
+    @Dependency
+    private MCSDMarkets plugin;
 
     @Subcommand("contract withdraw")
     @CommandPermission(WITHDRAW_CONTRACT_PERMISSION)
     @Syntax("<material> [quantity]")
     @Description("Take the material from the contract quantity and add to your inventory")
     @CommandCompletion("@materials")
-    public void handleWithdrawContractCommand(Player player, String materialName, @Optional @Conditions("gt0") final Integer quantity) {
-        Material material = Material.getMaterial(materialName.trim().toUpperCase());
+    public void handleWithdrawContractCommand(Player player, String materialName, @co.aikar.commands.annotation.Optional @Conditions("gt0") final Integer quantity) {
+        Optional<Material> optionalMaterial = ItemUtil.getMaterial(materialName);
 
-        if (material == null) {
+        if (!optionalMaterial.isPresent()) {
             player.sendMessage(Message.INVALID_MATERIAL.getText());
             return;
         }
+
+        Material material = optionalMaterial.get();
 
         final boolean withdrawAll = quantity == null;
         Inventory inventory = player.getInventory();

@@ -22,6 +22,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -42,12 +43,14 @@ public class BuyCommand extends BaseCommand {
     @Description("Buy items")
     @CommandCompletion("@materials")
     public void handleBuyCommand(Player player, String materialName, @Conditions("gt0") Integer quantity) {
-        Material material = Material.getMaterial(materialName.trim().toUpperCase());
+        Optional<Material> optionalMaterial = ItemUtil.getMaterial(materialName);
 
-        if (material == null) {
+        if (!optionalMaterial.isPresent()) {
             player.sendMessage(Message.INVALID_MATERIAL.getText());
             return;
         }
+
+        Material material = optionalMaterial.get();
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             ItemResponseWrapper itemResponseWrapper;

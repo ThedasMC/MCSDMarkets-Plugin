@@ -14,11 +14,22 @@ import org.bukkit.persistence.PersistentDataType;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.CONTRACT_ITEM_MATERIAL;
 
 public class ItemUtil {
+
+    public static Optional<Material> getMaterial(String materialName) {
+        materialName = materialName.trim();
+        Material material = Material.getMaterial(materialName.toUpperCase());
+
+        if (material == null)
+            material = Material.matchMaterial(materialName);
+
+        return material == null ? Optional.empty() : Optional.of(material);
+    }
 
     /**
      * Get a new purchase contract item

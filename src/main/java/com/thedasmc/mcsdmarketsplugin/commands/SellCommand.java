@@ -21,6 +21,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.BASE_COMMAND;
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.BUY_COMMAND_PERMISSION;
@@ -37,43 +38,22 @@ public class SellCommand extends BaseCommand {
     @Syntax("<material> <quantity>")
     @Description("Sell items")
     @CommandCompletion("@materials")
-    public void handleSellCommand(Player player, String materialName, @Conditions("gt0") Integer quantity) {
-        Material material = Material.getMaterial(materialName.trim().toUpperCase());
+    public void handleSellCommand(Player player, String materialName, @co.aikar.commands.annotation.Optional @Conditions("gt0") final Integer quantity) {
+        Optional<Material> optionalMaterial = ItemUtil.getMaterial(materialName);
 
-        if (material == null) {
+        if (!optionalMaterial.isPresent()) {
             player.sendMessage(Message.INVALID_MATERIAL.getText());
             return;
         }
 
+        Material material = optionalMaterial.get();
+
+        final boolean sellAll = quantity == null;
         Inventory inventory = player.getInventory();
-        int amountSubtracted = 0;
-        int foundQuantity = 0;
+        int taken = ItemUtil.takeContracts(plugin, material, inventory, sellAll ? -1 : quantity);
 
-        for (int slot = 0; slot < inventory.getSize(); slot++) {
-            ItemStack itemStack = inventory.getItem(slot);
-
-            if (itemStack == null || !ItemUtil.isPurchaseContractItem(plugin, material, itemStack))
-                continue;
-
-            int q = ItemUtil.getPurchaseContractQuantity(plugin, itemStack);
-            foundQuantity += q;
-
-            if (foundQuantity > quantity) {
-                int newAmount = foundQuantity - quantity;
-                int toSub = q - newAmount;
-                ItemUtil.subtractQuantity(plugin, itemStack, toSub);
-                amountSubtracted += toSub;
-            } else {//remove item
-                inventory.setItem(slot, null);
-                amountSubtracted += q;
-            }
-
-            if (foundQuantity >= quantity)
-                break;
-        }
-
-        if (amountSubtracted < quantity) {
-            refund(material, inventory, amountSubtracted);
+        if (!sellAll && taken < quantity) {
+            refund(material, inventory, taken);
             player.sendMessage(Message.INSUFFICIENT_QUANTITY.getText());
             return;
         }
@@ -98,7 +78,7 @@ public class SellCommand extends BaseCommand {
             }
 
             BigDecimal price = itemResponseWrapper.getSuccessfulResponse().getCurrentPrice()
-                .multiply(BigDecimal.valueOf(quantity));
+                .multiply(BigDecimal.valueOf(taken));
 
             CreateTransactionRequest createTransactionRequest = new CreateTransactionRequest();
             createTransactionRequest.setPlayerId(player.getUniqueId());

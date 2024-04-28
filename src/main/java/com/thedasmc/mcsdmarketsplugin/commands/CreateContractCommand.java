@@ -11,6 +11,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.BASE_COMMAND;
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.CREATE_CONTRACT_PERMISSION;
@@ -18,20 +19,23 @@ import static com.thedasmc.mcsdmarketsplugin.support.Constants.CREATE_CONTRACT_P
 @CommandAlias(BASE_COMMAND)
 public class CreateContractCommand extends BaseCommand {
 
-    @Dependency private MCSDMarkets plugin;
+    @Dependency
+    private MCSDMarkets plugin;
 
     @Subcommand("contract create")
     @CommandPermission(CREATE_CONTRACT_PERMISSION)
     @Syntax("<material> [quantity]")
     @Description("Take a specified amount of the specified material from your inventory and add to a contract item or create a new one")
     @CommandCompletion("@materials")
-    public void handleCreateContractCommand(Player player, String materialName, @Optional @Conditions("gt0") final Integer quantity) {
-        Material material = Material.getMaterial(materialName.trim().toUpperCase());
+    public void handleCreateContractCommand(Player player, String materialName, @co.aikar.commands.annotation.Optional @Conditions("gt0") final Integer quantity) {
+        Optional<Material> optionalMaterial = ItemUtil.getMaterial(materialName);
 
-        if (material == null) {
+        if (!optionalMaterial.isPresent()) {
             player.sendMessage(Message.INVALID_MATERIAL.getText());
             return;
         }
+
+        Material material = optionalMaterial.get();
 
         final boolean takeAll = quantity == null;
         Inventory inventory = player.getInventory();
