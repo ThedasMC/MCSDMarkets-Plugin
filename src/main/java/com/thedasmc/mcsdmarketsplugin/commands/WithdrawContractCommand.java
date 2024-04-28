@@ -35,40 +35,16 @@ public class WithdrawContractCommand extends BaseCommand {
 
         final boolean withdrawAll = quantity == null;
         Inventory inventory = player.getInventory();
-        int amountSubtracted = 0;
-        int foundQuantity = 0;
+        int taken = ItemUtil.takeContracts(plugin, material, inventory, withdrawAll ? -1 : quantity);
 
-        for (int slot = 0; slot < inventory.getSize(); slot++) {
-            ItemStack itemStack = inventory.getItem(slot);
-
-            if (itemStack == null || !ItemUtil.isPurchaseContractItem(plugin, material, itemStack))
-                continue;
-
-            int q = ItemUtil.getPurchaseContractQuantity(plugin, itemStack);
-            foundQuantity += q;
-
-            if (!withdrawAll && foundQuantity > quantity) {
-                int newQuantity = foundQuantity - quantity;
-                int toSub = q - newQuantity;
-                ItemUtil.subtractQuantity(plugin, itemStack, toSub);
-                amountSubtracted += toSub;
-            } else {//remove item
-                inventory.setItem(slot, null);
-                amountSubtracted += q;
-            }
-
-            if (!withdrawAll && foundQuantity >= quantity)
-                break;
-        }
-
-        if ((!withdrawAll && foundQuantity < quantity) || (withdrawAll && amountSubtracted == 0)) {
+        if ((!withdrawAll && taken < quantity) || (withdrawAll && taken == 0)) {
             ItemStack existingContractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, inventory);
 
-            if (amountSubtracted > 0) {
+            if (taken > 0) {
                 if (existingContractItem == null) {
-                    inventory.addItem(ItemUtil.getPurchaseContractItem(plugin, material, amountSubtracted));
+                    inventory.addItem(ItemUtil.getPurchaseContractItem(plugin, material, taken));
                 } else {
-                    ItemUtil.addQuantity(plugin, existingContractItem, amountSubtracted);
+                    ItemUtil.addQuantity(plugin, existingContractItem, taken);
                 }
             }
 
@@ -76,17 +52,17 @@ public class WithdrawContractCommand extends BaseCommand {
             return;
         }
 
-        Map<Integer, ItemStack> map = inventory.addItem(new ItemStack(material, amountSubtracted));
+        Map<Integer, ItemStack> map = inventory.addItem(new ItemStack(material, taken));
         ItemStack failed = map.get(0);
 
         if (failed != null && failed.getAmount() > 0) {
-            inventory.removeItem(new ItemStack(material, amountSubtracted - failed.getAmount()));
+            inventory.removeItem(new ItemStack(material, taken - failed.getAmount()));
             ItemStack contractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, inventory);
 
             if (contractItem == null) {
-                inventory.addItem(ItemUtil.getPurchaseContractItem(plugin, material, amountSubtracted));
+                inventory.addItem(ItemUtil.getPurchaseContractItem(plugin, material, taken));
             } else {
-                ItemUtil.addQuantity(plugin, contractItem, amountSubtracted);
+                ItemUtil.addQuantity(plugin, contractItem, taken);
             }
 
             player.sendMessage(Message.NO_INVENTORY_SPACE.getText());

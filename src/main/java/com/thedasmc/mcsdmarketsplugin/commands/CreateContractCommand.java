@@ -35,30 +35,9 @@ public class CreateContractCommand extends BaseCommand {
 
         final boolean takeAll = quantity == null;
         Inventory inventory = player.getInventory();
-        Map<Integer, ? extends ItemStack> items = inventory.all(material);
+        int taken = ItemUtil.takeItems(plugin, material, inventory, takeAll ? -1 : quantity);
 
-        int foundQuantity = 0;
-        int taken = 0;
-        for (Map.Entry<Integer, ? extends ItemStack> entry : items.entrySet()) {
-            int slot = entry.getKey();
-            ItemStack itemStack = entry.getValue();
-            int amount = itemStack.getAmount();
-            foundQuantity += amount;
-
-            if (!takeAll && foundQuantity > quantity) {
-                int newAmount = foundQuantity - quantity;
-                itemStack.setAmount(newAmount);
-                taken += amount - newAmount;
-            } else {
-                inventory.setItem(slot, null);
-                taken += amount;
-            }
-
-            if (!takeAll && foundQuantity >= quantity)
-                break;
-        }
-
-        if ((!takeAll && foundQuantity < quantity) || (takeAll && taken == 0)) {
+        if ((!takeAll && taken < quantity) || (takeAll && taken == 0)) {
             if (taken > 0)
                 inventory.addItem(new ItemStack(material, taken));
 
