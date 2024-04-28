@@ -13,6 +13,7 @@ public enum Message {
     VAULT_WITHDRAW_ERROR("vault-withdraw-error"),
     NO_INVENTORY_SPACE("no-inventory-space"),
     INSUFFICIENT_QUANTITY("insufficient-quantity"),
+    CANNOT_DROP_CONTRACT("cannot-drop-contract"),
     CHECK_PRICE("check-price"),
     PURCHASE("purchase-successful"),
     SALE_SUCCESSFUL("sale-successful"),

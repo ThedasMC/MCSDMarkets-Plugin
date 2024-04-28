@@ -5,6 +5,7 @@ import co.aikar.commands.ConditionFailedException;
 import co.aikar.commands.PaperCommandManager;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsplugin.commands.*;
+import com.thedasmc.mcsdmarketsplugin.listeners.PlayerDropItemEventListener;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Material;
@@ -46,6 +47,8 @@ public class MCSDMarkets extends JavaPlugin {
 
         Message.setMessagesConfig(YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml")));
         initCommandManager();
+
+        getServer().getPluginManager().registerEvents(new PlayerDropItemEventListener(this), this);
     }
 
     private boolean initMCSDMarketsAPI(FileConfiguration config) {

@@ -70,7 +70,7 @@ public class SellCommand extends BaseCommand {
 
             if (!itemResponseWrapper.isSuccessful()) {
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    refund(material, inventory, quantity);
+                    refund(material, inventory, taken);
                     player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, itemResponseWrapper.getErrorResponse().getMessage())));
                 });
 
@@ -84,7 +84,7 @@ public class SellCommand extends BaseCommand {
             createTransactionRequest.setPlayerId(player.getUniqueId());
             createTransactionRequest.setTransactionType(TransactionType.SALE);
             createTransactionRequest.setMaterial(material.name());
-            createTransactionRequest.setQuantity(quantity);
+            createTransactionRequest.setQuantity(taken);
 
             CreateTransactionResponseWrapper createTransactionResponseWrapper;
 
@@ -92,7 +92,7 @@ public class SellCommand extends BaseCommand {
                 createTransactionResponseWrapper = mcsdMarketsAPI.createTransaction(createTransactionRequest);
             } catch (IOException e) {
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    refund(material, inventory, quantity);
+                    refund(material, inventory, taken);
                     player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
                 });
 
@@ -101,7 +101,7 @@ public class SellCommand extends BaseCommand {
 
             if (!createTransactionResponseWrapper.isSuccessful()) {
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    refund(material, inventory, quantity);
+                    refund(material, inventory, taken);
                     player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, createTransactionResponseWrapper.getErrorResponse().getMessage())));
                 });
 

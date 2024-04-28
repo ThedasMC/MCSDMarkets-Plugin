@@ -3,3 +3,5 @@
 #It is essentially a global market and allows trading similar to stocks, but with items.
 #Register for an api key at https://thedasmc.tebex.io there is a free option
 api-key: null
+#Allow player's to drop contract items
+contract-drops-enabled: false
