@@ -59,9 +59,10 @@ public class SellCommand extends BaseCommand {
             foundQuantity += q;
 
             if (foundQuantity > quantity) {
-                int toTake = foundQuantity - quantity;
-                ItemUtil.subtractQuantity(plugin, itemStack, toTake);
-                amountSubtracted += toTake;
+                int newAmount = foundQuantity - quantity;
+                int toSub = q - newAmount;
+                ItemUtil.subtractQuantity(plugin, itemStack, toSub);
+                amountSubtracted += toSub;
             } else {//remove item
                 inventory.setItem(slot, null);
                 amountSubtracted += q;

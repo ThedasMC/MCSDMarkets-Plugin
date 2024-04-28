@@ -81,8 +81,13 @@ public class WithdrawContractCommand extends BaseCommand {
 
         if (failed != null && failed.getAmount() > 0) {
             inventory.removeItem(new ItemStack(material, amountSubtracted - failed.getAmount()));
-            ItemStack contractItem = ItemUtil.getPurchaseContractItem(plugin, material, amountSubtracted);
-            inventory.addItem(contractItem);
+            ItemStack contractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, inventory);
+
+            if (contractItem == null) {
+                inventory.addItem(ItemUtil.getPurchaseContractItem(plugin, material, amountSubtracted));
+            } else {
+                ItemUtil.addQuantity(plugin, contractItem, amountSubtracted);
+            }
 
             player.sendMessage(Message.NO_INVENTORY_SPACE.getText());
             return;
