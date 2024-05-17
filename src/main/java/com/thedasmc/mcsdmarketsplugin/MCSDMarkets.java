@@ -5,12 +5,16 @@ import co.aikar.commands.ConditionFailedException;
 import co.aikar.commands.PaperCommandManager;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsplugin.commands.*;
+import com.thedasmc.mcsdmarketsplugin.listeners.InventoryClickEventListener;
+import com.thedasmc.mcsdmarketsplugin.listeners.InventoryCloseEventListener;
 import com.thedasmc.mcsdmarketsplugin.listeners.PlayerDropItemEventListener;
+import com.thedasmc.mcsdmarketsplugin.support.gui.GUISupport;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -24,6 +28,7 @@ public class MCSDMarkets extends JavaPlugin {
 
     private MCSDMarketsAPI mcsdMarketsAPI;
     private Economy economy;
+    private GUISupport guiSupport;
 
     @Override
     public void onEnable() {
@@ -46,9 +51,10 @@ public class MCSDMarkets extends JavaPlugin {
         }
 
         Message.setMessagesConfig(YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml")));
+        initGuiSupport();
         initCommandManager();
 
-        getServer().getPluginManager().registerEvents(new PlayerDropItemEventListener(this), this);
+        registerListeners();
     }
 
     private boolean initMCSDMarketsAPI(FileConfiguration config) {
@@ -74,6 +80,10 @@ public class MCSDMarkets extends JavaPlugin {
         return (this.economy = rsp.getProvider()) != null;
     }
 
+    private void initGuiSupport() {
+        this.guiSupport = new GUISupport();
+    }
+
     private void initCommandManager() {
         BukkitCommandManager commandManager = new PaperCommandManager(this);
 
@@ -90,6 +100,7 @@ public class MCSDMarkets extends JavaPlugin {
         //Dependencies
         commandManager.registerDependency(Economy.class, this.economy);
         commandManager.registerDependency(MCSDMarketsAPI.class, this.mcsdMarketsAPI);
+        commandManager.registerDependency(GUISupport.class, this.guiSupport);
 
         //Conditions
         commandManager.getCommandConditions().addCondition(Integer.class, "gt0", ((context, execContext, value) -> {
@@ -104,5 +115,13 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerCommand(new SellCommand());
         commandManager.registerCommand(new CreateContractCommand());
         commandManager.registerCommand(new WithdrawContractCommand());
+        commandManager.registerCommand(new ViewCommand());
+    }
+
+    private void registerListeners() {
+        PluginManager pluginManager = getServer().getPluginManager();
+        pluginManager.registerEvents(new PlayerDropItemEventListener(this), this);
+        pluginManager.registerEvents(new InventoryClickEventListener(this, this.guiSupport), this);
+        pluginManager.registerEvents(new InventoryCloseEventListener(guiSupport), this);
     }
 }
