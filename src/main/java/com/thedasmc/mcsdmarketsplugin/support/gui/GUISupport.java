@@ -71,6 +71,7 @@ public class GUISupport {
         ItemStack closeButton = new ItemStack(Material.BARRIER);
         ItemMeta closeMeta = Objects.requireNonNull(closeButton.getItemMeta());
         closeMeta.setDisplayName(ChatColor.RED + "Close");
+        closeButton.setItemMeta(closeMeta);
 
         if (pageInfo.getPage() > 0)
             inventory.setItem(PREVIOUS_BUTTON_SLOT, previousButton);
