@@ -1,6 +1,6 @@
 name: MCSDMarkets
-version: 1.0
-api-version: 1.13
+version: 1.0-b
+api-version: 1.14
 main: com.thedasmc.mcsdmarketsplugin.MCSDMarkets
 author: tchristofferson
 depend:
