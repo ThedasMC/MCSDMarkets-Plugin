@@ -6,7 +6,7 @@
 
     <groupId>com.thedasmc</groupId>
     <artifactId>MCSDMarkets-Plugin</artifactId>
-    <version>1.0-b-SNAPSHOT</version>
+    <version>1.1-b-SNAPSHOT</version>
 
     <build>
         <plugins>
