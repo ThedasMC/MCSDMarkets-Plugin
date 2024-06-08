@@ -94,7 +94,8 @@ public class GUISupport {
         ItemMeta itemMeta = Objects.requireNonNull(itemStack.getItemMeta());
         itemMeta.setLore(Arrays.asList(
             ChatColor.GRAY + "Price: " + ChatColor.GREEN + "$" + itemResponse.getCurrentPrice().toPlainString(),
-            ChatColor.GRAY + "Original Price: " + ChatColor.GREEN + "$" + itemResponse.getBasePrice().toPlainString()
+            ChatColor.GRAY + "Original Price: " + ChatColor.GREEN + "$" + itemResponse.getBasePrice().toPlainString(),
+            ChatColor.GRAY + "Inventory: " + ChatColor.AQUA + itemResponse.getInventory()
         ));
 
         itemStack.setItemMeta(itemMeta);
