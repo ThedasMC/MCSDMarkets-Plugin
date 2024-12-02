@@ -3,7 +3,7 @@ package com.thedasmc.mcsdmarketsplugin.commands;
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
-import com.thedasmc.mcsdmarketsapi.request.ItemPageRequest;
+import com.thedasmc.mcsdmarketsapi.request.PageRequest;
 import com.thedasmc.mcsdmarketsapi.response.impl.ItemPageResponse;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.ItemPageResponseWrapper;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
@@ -22,8 +22,6 @@ import static com.thedasmc.mcsdmarketsplugin.support.Constants.VIEW_COMMAND_PERM
 @CommandAlias(BASE_COMMAND)
 public class ViewCommand extends BaseCommand {
 
-    private final String versionString = Bukkit.getServer().getBukkitVersion().split("-")[0];
-
     @Dependency private MCSDMarkets plugin;
     @Dependency private MCSDMarketsAPI mcsdMarketsAPI;
     @Dependency private GUISupport guiSupport;
@@ -36,8 +34,7 @@ public class ViewCommand extends BaseCommand {
         final int pageIndex = page == null ? 0 : page - 1;
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            ItemPageRequest request = new ItemPageRequest();
-            request.setMcVersion(versionString);
+            PageRequest request = new PageRequest();
             request.setPage(pageIndex);
             request.setPageSize(GUISupport.INVENTORY_SIZE - 9);
 

@@ -63,7 +63,7 @@ public class MCSDMarkets extends JavaPlugin {
         if (apiKey == null || apiKey.trim().isEmpty())
             return false;
 
-        this.mcsdMarketsAPI = new MCSDMarketsAPI(apiKey);
+        this.mcsdMarketsAPI = new MCSDMarketsAPI(apiKey, getServer().getBukkitVersion().split("-")[0]);
         return true;
     }
 
