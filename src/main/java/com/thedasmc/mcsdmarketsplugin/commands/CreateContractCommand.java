@@ -10,7 +10,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Map;
 import java.util.Optional;
 
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.BASE_COMMAND;
@@ -30,7 +29,7 @@ public class CreateContractCommand extends BaseCommand {
     public void handleCreateContractCommand(Player player, String materialName, @co.aikar.commands.annotation.Optional @Conditions("gt0") final Integer quantity) {
         Optional<Material> optionalMaterial = ItemUtil.getMaterial(materialName);
 
-        if (!optionalMaterial.isPresent()) {
+        if (optionalMaterial.isEmpty()) {
             player.sendMessage(Message.INVALID_MATERIAL.getText());
             return;
         }

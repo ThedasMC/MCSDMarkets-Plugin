@@ -29,10 +29,6 @@ public enum Message {
         this.path = path;
     }
 
-    public String getPath() {
-        return path;
-    }
-
     public String getText() {
         return ChatColor.translateAlternateColorCodes('&', Objects.requireNonNull(messagesConfig.getString(path), "Message not found for path " + path));
     }
