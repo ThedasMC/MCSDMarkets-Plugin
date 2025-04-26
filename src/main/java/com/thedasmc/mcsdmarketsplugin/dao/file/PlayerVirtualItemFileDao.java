@@ -9,6 +9,8 @@ import com.thedasmc.mcsdmarketsplugin.json.PlayerVirtualItemJsonConverter;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
 import jakarta.persistence.OptimisticLockException;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
 
     private final Map<UUID, ReentrantLock> locks = new ConcurrentHashMap<>();
+    private final ValidatorFactory validatorFactory = Validation.buildDefaultValidatorFactory();
     private final File savesDir;
     private final Gson gson;
 
@@ -39,11 +42,7 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
 
     @Override
     public Optional<PlayerVirtualItem> findById(PlayerVirtualItemPK pk) {
-        Preconditions.checkNotNull(pk, "PlayerVirtualItemPK cannot be null!");
-        Preconditions.checkNotNull(pk.getUuid(), "PlayerVirtualItemPK uuid cannot be null!");
-        Preconditions.checkArgument(!pk.getUuid().isEmpty(), "PlayerVirtualItemPK uuid cannot be empty!");
-        Preconditions.checkNotNull(pk.getMaterial(), "PlayerVirtualItemPK material cannot be null!");
-        Preconditions.checkArgument(!pk.getMaterial().isEmpty(), "PlayerVirtualItemPK material cannot be empty!");
+        validatorFactory.getValidator().validate(pk);
 
         try {
             return runWithLock(UUID.fromString(pk.getUuid()), () -> loadPlayerVirtualItems(UUID.fromString(pk.getUuid())).stream()
@@ -56,6 +55,8 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
 
     @Override
     public PlayerVirtualItem save(PlayerVirtualItem playerVirtualItem) {
+        validatorFactory.getValidator().validate(playerVirtualItem);
+
         try {
             return runWithLock(UUID.fromString(playerVirtualItem.getId().getUuid()), () -> {
                 Map<String, PlayerVirtualItem> playerVirtualItems = loadPlayerVirtualItems(UUID.fromString(playerVirtualItem.getId().getUuid())).stream()
@@ -91,6 +92,8 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
 
     @Override
     public void deleteById(PlayerVirtualItemPK pk) {
+        validatorFactory.getValidator().validate(pk);
+
         try {
             runWithLock(UUID.fromString(pk.getUuid()), () -> {
                 Map<String, PlayerVirtualItem> playerVirtualItems = loadPlayerVirtualItems(UUID.fromString(pk.getUuid())).stream()
@@ -110,7 +113,7 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
 
     @Override
     public void shutdown() {
-        //no-op
+        validatorFactory.close();
     }
 
     //Loads player's save file from disk
