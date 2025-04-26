@@ -1,4 +1,4 @@
-package com.thedasmc.mcsdmarketsplugin.listeners;
+package com.thedasmc.mcsdmarketsplugin.listener;
 
 import com.thedasmc.mcsdmarketsplugin.support.gui.GUISupport;
 import org.bukkit.event.EventHandler;

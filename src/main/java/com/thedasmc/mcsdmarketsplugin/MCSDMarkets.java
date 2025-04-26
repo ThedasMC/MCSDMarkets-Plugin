@@ -5,12 +5,17 @@ import co.aikar.commands.ConditionFailedException;
 import co.aikar.commands.PaperCommandManager;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsplugin.commands.*;
-import com.thedasmc.mcsdmarketsplugin.listeners.InventoryClickEventListener;
-import com.thedasmc.mcsdmarketsplugin.listeners.InventoryCloseEventListener;
-import com.thedasmc.mcsdmarketsplugin.listeners.PlayerDropItemEventListener;
+import com.thedasmc.mcsdmarketsplugin.config.SessionFactoryManager;
+import com.thedasmc.mcsdmarketsplugin.dao.PlayerVirtualItemDao;
+import com.thedasmc.mcsdmarketsplugin.dao.db.PlayerVirtualItemDbDao;
+import com.thedasmc.mcsdmarketsplugin.dao.file.PlayerVirtualItemFileDao;
+import com.thedasmc.mcsdmarketsplugin.listener.InventoryClickEventListener;
+import com.thedasmc.mcsdmarketsplugin.listener.InventoryCloseEventListener;
+import com.thedasmc.mcsdmarketsplugin.listener.PlayerDropItemEventListener;
 import com.thedasmc.mcsdmarketsplugin.support.gui.GUISupport;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -29,6 +34,7 @@ public class MCSDMarkets extends JavaPlugin {
     private MCSDMarketsAPI mcsdMarketsAPI;
     private Economy economy;
     private GUISupport guiSupport;
+    private PlayerVirtualItemDao playerVirtualItemDao;
 
     @Override
     public void onEnable() {
@@ -52,6 +58,7 @@ public class MCSDMarkets extends JavaPlugin {
 
         Message.setMessagesConfig(YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml")));
         initGuiSupport();
+        initPlayerVirtualItemDao();
         initCommandManager();
 
         registerListeners();
@@ -84,6 +91,15 @@ public class MCSDMarkets extends JavaPlugin {
         this.guiSupport = new GUISupport();
     }
 
+    private void initPlayerVirtualItemDao() {
+        if (getConfig().getBoolean("use-mysql", false)) {
+            this.playerVirtualItemDao = new PlayerVirtualItemDbDao(new SessionFactoryManager(this));
+        } else {
+            Bukkit.getLogger().info("[%s] - Using flat file implementation. It is recommended to use MySQL for better performance.");
+            this.playerVirtualItemDao = new PlayerVirtualItemFileDao(this);
+        }
+    }
+
     private void initCommandManager() {
         BukkitCommandManager commandManager = new PaperCommandManager(this);
 
@@ -101,6 +117,7 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerDependency(Economy.class, this.economy);
         commandManager.registerDependency(MCSDMarketsAPI.class, this.mcsdMarketsAPI);
         commandManager.registerDependency(GUISupport.class, this.guiSupport);
+        commandManager.registerDependency(PlayerVirtualItemDao.class, this.playerVirtualItemDao);
 
         //Conditions
         commandManager.getCommandConditions().addCondition(Integer.class, "gt0", ((context, execContext, value) -> {
