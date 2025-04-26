@@ -9,6 +9,9 @@ import com.thedasmc.mcsdmarketsapi.response.impl.ItemResponse;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.CreateTransactionResponseWrapper;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.ItemResponseWrapper;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
+import com.thedasmc.mcsdmarketsplugin.dao.PlayerVirtualItemDao;
+import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
+import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
 import com.thedasmc.mcsdmarketsplugin.support.ItemUtil;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import com.thedasmc.mcsdmarketsplugin.support.messages.MessageVariable;
@@ -23,6 +26,7 @@ import org.bukkit.inventory.ItemStack;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -36,6 +40,7 @@ public class BuyCommand extends BaseCommand {
     @Dependency private MCSDMarkets plugin;
     @Dependency private MCSDMarketsAPI mcsdMarketsAPI;
     @Dependency private Economy economy;
+    @Dependency private PlayerVirtualItemDao playerVirtualItemDao;
 
     @Subcommand("buy")
     @CommandPermission(BUY_COMMAND_PERMISSION)
@@ -43,9 +48,10 @@ public class BuyCommand extends BaseCommand {
     @Description("Buy items")
     @CommandCompletion("@materials")
     public void handleBuyCommand(Player player, String materialName, @Conditions("gt0") Integer quantity) {
+        final UUID playerId = player.getUniqueId();
         Optional<Material> optionalMaterial = ItemUtil.getMaterial(materialName);
 
-        if (!optionalMaterial.isPresent()) {
+        if (optionalMaterial.isEmpty()) {
             player.sendMessage(Message.INVALID_MATERIAL.getText());
             return;
         }
@@ -53,6 +59,7 @@ public class BuyCommand extends BaseCommand {
         Material material = optionalMaterial.get();
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            //STEP 1: Get the item from MCSDMarkets web call for pricing info
             ItemResponseWrapper itemResponseWrapper;
 
             try {
@@ -67,6 +74,7 @@ public class BuyCommand extends BaseCommand {
                 return;
             }
 
+            //STEP 2: Check if the player has enough funds to buy the item
             ItemResponse itemResponse = itemResponseWrapper.getSuccessfulResponse();
             BigDecimal cost = itemResponse.getCurrentPrice().multiply(BigDecimal.valueOf(quantity));
             EconomyResponse withdrawResponse;
@@ -82,35 +90,31 @@ public class BuyCommand extends BaseCommand {
                 return;
             }
 
-            boolean addedContractItem;
+            //STEP 3: Save the item to the player's virtual inventory
+            PlayerVirtualItemPK pk = new PlayerVirtualItemPK(playerId.toString(), material.name());
+            Optional<PlayerVirtualItem> optionalPlayerVirtualItem = playerVirtualItemDao.findById(pk);
+            PlayerVirtualItem playerVirtualItem;
 
-            try {
-                addedContractItem = Bukkit.getScheduler().callSyncMethod(plugin, () -> {
-                    ItemStack existingContractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, player.getInventory());
-
-                    if (existingContractItem == null) {
-                        ItemStack itemStack = ItemUtil.getPurchaseContractItem(plugin, material, quantity);
-
-                        if (!player.getInventory().addItem(itemStack).isEmpty()) {
-                            economy.depositPlayer(player, cost.doubleValue());
-                            player.sendMessage(Message.NO_INVENTORY_SPACE.getText());
-                            return false;
-                        }
-                    } else {
-                        ItemUtil.addQuantity(plugin, existingContractItem, quantity);
-                    }
-
-                    return true;
-                }).get(3, TimeUnit.SECONDS);
-            } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                throw new RuntimeException("Failed to call sync method to add contract item to inventory!", e);
+            if (optionalPlayerVirtualItem.isPresent()) {
+                playerVirtualItem = optionalPlayerVirtualItem.get();
+                playerVirtualItem.setQuantity(playerVirtualItem.getQuantity() + quantity.longValue());
+            } else {
+                playerVirtualItem = new PlayerVirtualItem();
+                playerVirtualItem.setId(pk);
+                playerVirtualItem.setQuantity(quantity.longValue());
             }
 
-            if (!addedContractItem)
+            try {
+                playerVirtualItemDao.save(playerVirtualItem);
+            } catch (Exception e) {
+                player.sendMessage(Message.SAVE_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+                Bukkit.getScheduler().callSyncMethod(plugin, () -> economy.depositPlayer(player, cost.doubleValue()));
                 return;
+            }
 
+            //STEP 4: Call MCSDMarkets to create a transaction to record the purchase
             CreateTransactionRequest request = new CreateTransactionRequest();
-            request.setPlayerId(player.getUniqueId());
+            request.setPlayerId(playerId);
             request.setTransactionType(TransactionType.PURCHASE);
             request.setMaterial(material.name());
             request.setQuantity(quantity);
@@ -120,6 +124,7 @@ public class BuyCommand extends BaseCommand {
             try {
                 createTransactionResponseWrapper = mcsdMarketsAPI.createTransaction(request);
             } catch (IOException e) {
+                player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
                 Bukkit.getScheduler().callSyncMethod(plugin, () -> economy.depositPlayer(player, cost.doubleValue()));
                 return;
             }

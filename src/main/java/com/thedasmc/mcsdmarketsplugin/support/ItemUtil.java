@@ -22,13 +22,13 @@ import static com.thedasmc.mcsdmarketsplugin.support.Constants.CONTRACT_ITEM_MAT
 public class ItemUtil {
 
     public static Optional<Material> getMaterial(String materialName) {
-        materialName = materialName.trim();
-        Material material = Material.getMaterial(materialName.toUpperCase());
+        materialName = materialName.trim().toUpperCase();
+        Material material = Material.getMaterial(materialName);
 
-        if (material == null)
-            material = Material.matchMaterial(materialName);
+        if (material == null) material = Material.getMaterial(materialName, true);
+        if (material == null) material = Material.matchMaterial(materialName);
 
-        return material == null ? Optional.empty() : Optional.of(material);
+        return Optional.ofNullable(material);
     }
 
     /**

@@ -39,6 +39,10 @@
                                     <pattern>co.aikar.locales</pattern>
                                     <shadedPattern>com.thedasmc.mcsdmarketsplugin.co.aikar.locales</shadedPattern>
                                 </relocation>
+                                <relocation>
+                                    <pattern>org.hibernate</pattern>
+                                    <shadedPattern>com.thedasmc.mcsdmarketsplugin.org.hibernate</shadedPattern>
+                                </relocation>
                             </relocations>
                         </configuration>
                     </execution>

@@ -18,6 +18,14 @@ public class PlayerVirtualItemPK {
     @NotEmpty(message = "material cannot be empty!")
     private String material;
 
+    public PlayerVirtualItemPK() {
+    }
+
+    public PlayerVirtualItemPK(String uuid, String material) {
+        this.uuid = uuid;
+        this.material = material;
+    }
+
     public String getUuid() {
         return uuid;
     }
