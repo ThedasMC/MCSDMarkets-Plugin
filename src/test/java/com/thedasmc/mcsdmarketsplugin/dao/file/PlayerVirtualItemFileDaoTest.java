@@ -100,8 +100,8 @@ public class PlayerVirtualItemFileDaoTest {
         ReentrantLock lock = new ReentrantLock();
         lock.lock();
 
+        final PlayerVirtualItem pvi = createSamplePlayerVirtualItem();
         Thread thread = new Thread(() -> {
-            PlayerVirtualItem pvi = createSamplePlayerVirtualItem();
             dao.save(pvi, lock);
             latch.countDown();
         });
@@ -112,10 +112,12 @@ public class PlayerVirtualItemFileDaoTest {
 
         try {
             //Ensure the thread is still running since the lock hasn't been released yet
-            assertTrue(thread.isAlive());
+            assertTrue(thread.isAlive() && latch.getCount() == 1);
             lock.unlock();
             boolean released = latch.await(wait, TimeUnit.MILLISECONDS);//Once the thread has finished saving the data, the latch will be released
-            assertTrue(released);
+            assertTrue(released);//Make sure the work was done once the lock was released
+            assertFalse(lock.isLocked());//Make sure the lock is unlocked after work is completed
+            assertFalse(dao.containsLockFor(UUID.fromString(pvi.getId().getUuid())));//Make sure the lock was removed from the map in the dao since there is no other thread holding the lock
         } finally {
             try {
                 lock.unlock();
@@ -125,6 +127,7 @@ public class PlayerVirtualItemFileDaoTest {
     }
 
     private PlayerVirtualItem createSamplePlayerVirtualItem() {
+        //Uses random uuid so each test doesn't interfere with each other's data
         PlayerVirtualItemPK id = new PlayerVirtualItemPK(UUID.randomUUID().toString(), Material.DIAMOND.name());
         PlayerVirtualItem pvi = new PlayerVirtualItem();
         pvi.setId(id);

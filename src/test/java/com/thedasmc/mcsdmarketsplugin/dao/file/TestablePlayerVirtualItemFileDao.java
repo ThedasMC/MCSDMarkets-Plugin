@@ -16,4 +16,8 @@ public class TestablePlayerVirtualItemFileDao extends PlayerVirtualItemFileDao {
         locks.put(UUID.fromString(playerVirtualItem.getId().getUuid()), lock);
         super.save(playerVirtualItem);
     }
+
+    public boolean containsLockFor(UUID uuid) {
+        return locks.containsKey(uuid);
+    }
 }
