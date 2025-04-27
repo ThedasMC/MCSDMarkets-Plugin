@@ -1,4 +1,4 @@
-package com.thedasmc.validation;
+package com.thedasmc.mcsdmarketsplugin.validation;
 
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
