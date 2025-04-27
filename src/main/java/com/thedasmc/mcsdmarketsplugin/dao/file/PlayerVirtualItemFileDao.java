@@ -10,6 +10,7 @@ import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -17,6 +18,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,13 +28,20 @@ import java.util.stream.Collectors;
 
 public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
 
-    private final Map<UUID, ReentrantLock> locks = new ConcurrentHashMap<>();
-    private final ValidatorFactory validatorFactory = Validation.buildDefaultValidatorFactory();
+    protected final Map<UUID, ReentrantLock> locks = new ConcurrentHashMap<>();
     private final File savesDir;
+    private final ValidatorFactory validatorFactory;
     private final Gson gson;
 
     public PlayerVirtualItemFileDao(MCSDMarkets plugin) {
         this.savesDir = new File(plugin.getDataFolder(), "saves");
+        //noinspection ResultOfMethodCallIgnored
+        this.savesDir.mkdir();
+
+        this.validatorFactory = Validation.byDefaultProvider()
+            .configure()
+            .messageInterpolator(new ParameterMessageInterpolator())
+            .buildValidatorFactory();
 
         this.gson = new GsonBuilder()
             .registerTypeAdapter(PlayerVirtualItem.class, new PlayerVirtualItemJsonConverter())
@@ -84,6 +93,8 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
 
                 return playerVirtualItem;
             });
+        } catch (OptimisticLockException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }
@@ -119,9 +130,9 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
     private List<PlayerVirtualItem> loadPlayerVirtualItems(UUID uuid) {
         File file = new File(savesDir, uuid.toString() + ".json");
 
-        try {
+        try (FileReader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             //noinspection UnstableApiUsage
-            return gson.fromJson(new FileReader(file, StandardCharsets.UTF_8), new TypeToken<List<PlayerVirtualItem>>(){}.getType());
+            return gson.fromJson(reader, new TypeToken<List<PlayerVirtualItem>>(){}.getType());
         } catch (FileNotFoundException e) {
             return new LinkedList<>();
         } catch (IOException e) {
@@ -133,7 +144,7 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
     private void saveFile(UUID uuid, Collection<PlayerVirtualItem> playerVirtualItems) throws IOException {
         String json = gson.toJson(playerVirtualItems);
         File file = new File(savesDir, uuid + ".json");
-        Files.writeString(file.toPath(), json);
+        Files.writeString(file.toPath(), json, StandardOpenOption.CREATE);
     }
 
     //Run code locked on the specified uuid

@@ -41,7 +41,7 @@ public class SellCommand extends BaseCommand {
     public void handleSellCommand(Player player, String materialName, @co.aikar.commands.annotation.Optional @Conditions("gt0") final Integer quantity) {
         Optional<Material> optionalMaterial = ItemUtil.getMaterial(materialName);
 
-        if (!optionalMaterial.isPresent()) {
+        if (optionalMaterial.isEmpty()) {
             player.sendMessage(Message.INVALID_MATERIAL.getText());
             return;
         }
