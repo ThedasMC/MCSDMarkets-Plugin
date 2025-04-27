@@ -2,9 +2,7 @@ package com.thedasmc.mcsdmarketsplugin.dao.file;
 
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
-import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
 import jakarta.persistence.OptimisticLockException;
-import org.bukkit.Material;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -16,6 +14,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static com.thedasmc.mcsdmarketsplugin.util.PlayerVirtualItemUtil.createSamplePlayerVirtualItem;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -124,16 +123,6 @@ public class PlayerVirtualItemFileDaoTest {
             } catch (IllegalMonitorStateException ignored) {
             }
         }
-    }
-
-    private PlayerVirtualItem createSamplePlayerVirtualItem() {
-        //Uses random uuid so each test doesn't interfere with each other's data
-        PlayerVirtualItemPK id = new PlayerVirtualItemPK(UUID.randomUUID().toString(), Material.DIAMOND.name());
-        PlayerVirtualItem pvi = new PlayerVirtualItem();
-        pvi.setId(id);
-        pvi.setQuantity(5L);
-
-        return pvi;
     }
 
 }
