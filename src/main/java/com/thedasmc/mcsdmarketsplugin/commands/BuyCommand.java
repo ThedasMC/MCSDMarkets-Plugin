@@ -86,7 +86,7 @@ public class BuyCommand extends BaseCommand {
             }
 
             if (!withdrawResponse.transactionSuccess()) {
-                player.sendMessage(Message.VAULT_WITHDRAW_ERROR.getText(new MessageVariable(Placeholder.ERROR, withdrawResponse.errorMessage)));
+                player.sendMessage(Message.VAULT_ERROR.getText(new MessageVariable(Placeholder.ERROR, withdrawResponse.errorMessage)));
                 return;
             }
 

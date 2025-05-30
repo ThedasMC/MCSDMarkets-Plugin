@@ -20,13 +20,16 @@ public class SessionFactoryManager {
         final String dbName = pluginConfig.getString("database.name");
 
         Configuration cfg = new Configuration()
-            .setProperty("hibernate.connection.driver_class", "com.mysql.jdbc.Driver")
+            .setProperty("hibernate.connection.provider_class", org.hibernate.hikaricp.internal.HikariCPConnectionProvider.class.getName())
+            .setProperty("hibernate.transaction.jta.platform", org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform.class.getName())
+            .setProperty("hibernate.hikari.minimumIdle", "1")
+            .setProperty("hibernate.hikari.maximumPoolSize", "10")
             .setProperty("hibernate.connection.url", "jdbc:mysql://" + dbHost + ":" + dbPort + "/" + dbName)
             .setProperty("hibernate.connection.username", dbUser)
             .setProperty("hibernate.connection.password", dbPassword)
-            .setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect")
+            .setProperty("hibernate.connection.driver_class", com.mysql.cj.jdbc.Driver.class.getName())
             .setProperty("hibernate.show_sql", "false")
-            .setProperty("hibernate.hbm2ddl.auto", "create-update");
+            .setProperty("hibernate.hbm2ddl.auto", "update");
 
         this.sessionFactory = cfg.buildSessionFactory();
     }

@@ -12,12 +12,12 @@ import com.thedasmc.mcsdmarketsplugin.dao.file.PlayerVirtualItemFileDao;
 import com.thedasmc.mcsdmarketsplugin.listener.InventoryClickEventListener;
 import com.thedasmc.mcsdmarketsplugin.listener.InventoryCloseEventListener;
 import com.thedasmc.mcsdmarketsplugin.listener.PlayerDropItemEventListener;
+import com.thedasmc.mcsdmarketsplugin.support.SellInventoryManager;
 import com.thedasmc.mcsdmarketsplugin.support.gui.GUISupport;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -27,6 +27,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public class MCSDMarkets extends JavaPlugin {
@@ -35,6 +36,7 @@ public class MCSDMarkets extends JavaPlugin {
     private Economy economy;
     private GUISupport guiSupport;
     private PlayerVirtualItemDao playerVirtualItemDao;
+    private SellInventoryManager sellInventoryManager;
 
     @Override
     public void onEnable() {
@@ -42,9 +44,8 @@ public class MCSDMarkets extends JavaPlugin {
 
         saveDefaultConfig();
         saveResource("messages.yml", false);
-        FileConfiguration config = getConfig();
 
-        if (!initMCSDMarketsAPI(config)) {
+        if (!initMCSDMarketsAPI()) {
             getLogger().warning(String.format("[%s]No api-key found! You need to go get an api key and add it to the config.yml!", pluginName));
             getServer().getPluginManager().disablePlugin(this);
             return;
@@ -59,13 +60,34 @@ public class MCSDMarkets extends JavaPlugin {
         Message.setMessagesConfig(YamlConfiguration.loadConfiguration(new File(getDataFolder(), "messages.yml")));
         initGuiSupport();
         initPlayerVirtualItemDao();
+        initSellInventoryManager();
         initCommandManager();
 
         registerListeners();
     }
 
-    private boolean initMCSDMarketsAPI(FileConfiguration config) {
-        String apiKey = config.getString("api-key");
+    public MCSDMarketsAPI getMcsdMarketsAPI() {
+        return mcsdMarketsAPI;
+    }
+
+    public Economy getEconomy() {
+        return economy;
+    }
+
+    public GUISupport getGuiSupport() {
+        return guiSupport;
+    }
+
+    public PlayerVirtualItemDao getPlayerVirtualItemDao() {
+        return playerVirtualItemDao;
+    }
+
+    public SellInventoryManager getSellInventoryManager() {
+        return sellInventoryManager;
+    }
+
+    private boolean initMCSDMarketsAPI() {
+        String apiKey = getConfig().getString("api-key");
 
         if (apiKey == null || apiKey.trim().isEmpty())
             return false;
@@ -93,11 +115,20 @@ public class MCSDMarkets extends JavaPlugin {
 
     private void initPlayerVirtualItemDao() {
         if (getConfig().getBoolean("use-mysql", false)) {
-            this.playerVirtualItemDao = new PlayerVirtualItemDbDao(new SessionFactoryManager(this));
+            try {
+                this.playerVirtualItemDao = new PlayerVirtualItemDbDao(new SessionFactoryManager(this));
+            } catch (Exception e) {
+                Bukkit.getLogger().log(Level.SEVERE, String.format("[%s] - Failed to initialize database connection! Are your connection details correct? Disabling plugin.", getName()), e);
+                Bukkit.getPluginManager().disablePlugin(this);
+            }
         } else {
-            Bukkit.getLogger().info("[%s] - Using flat file implementation. It is recommended to use MySQL for better performance.");
+            Bukkit.getLogger().info(String.format("[%s] - Using flat file implementation. It is recommended to use MySQL for better performance.", getName()));
             this.playerVirtualItemDao = new PlayerVirtualItemFileDao(this);
         }
+    }
+
+    private void initSellInventoryManager() {
+        this.sellInventoryManager = new SellInventoryManager();
     }
 
     private void initCommandManager() {
@@ -118,6 +149,7 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerDependency(MCSDMarketsAPI.class, this.mcsdMarketsAPI);
         commandManager.registerDependency(GUISupport.class, this.guiSupport);
         commandManager.registerDependency(PlayerVirtualItemDao.class, this.playerVirtualItemDao);
+        commandManager.registerDependency(SellInventoryManager.class, this.sellInventoryManager);
 
         //Conditions
         commandManager.getCommandConditions().addCondition(Integer.class, "gt0", ((context, execContext, value) -> {
@@ -132,12 +164,13 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerCommand(new SellCommand());
         commandManager.registerCommand(new WithdrawContractCommand());
         commandManager.registerCommand(new ViewCommand());
+        commandManager.registerCommand(new SellInventoryCommand());
     }
 
     private void registerListeners() {
         PluginManager pluginManager = getServer().getPluginManager();
         pluginManager.registerEvents(new PlayerDropItemEventListener(this), this);
-        pluginManager.registerEvents(new InventoryClickEventListener(this, this.guiSupport), this);
-        pluginManager.registerEvents(new InventoryCloseEventListener(guiSupport), this);
+        pluginManager.registerEvents(new InventoryClickEventListener(this), this);
+        pluginManager.registerEvents(new InventoryCloseEventListener(this), this);
     }
 }

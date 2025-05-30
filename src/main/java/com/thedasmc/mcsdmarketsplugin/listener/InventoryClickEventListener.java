@@ -18,9 +18,9 @@ public class InventoryClickEventListener implements Listener {
     private final MCSDMarkets plugin;
     private final GUISupport guiSupport;
 
-    public InventoryClickEventListener(MCSDMarkets plugin, GUISupport guiSupport) {
+    public InventoryClickEventListener(MCSDMarkets plugin) {
         this.plugin = plugin;
-        this.guiSupport = guiSupport;
+        this.guiSupport = plugin.getGuiSupport();
     }
 
     @EventHandler
@@ -39,10 +39,9 @@ public class InventoryClickEventListener implements Listener {
         if (event.getCurrentItem() == null)
             return;
 
-        if (!(event.getWhoClicked() instanceof Player))
+        if (!(event.getWhoClicked() instanceof Player player))
             return;
 
-        Player player = (Player) event.getWhoClicked();
         int slot = event.getSlot();
 
         if (slot == PREVIOUS_BUTTON_SLOT) {
