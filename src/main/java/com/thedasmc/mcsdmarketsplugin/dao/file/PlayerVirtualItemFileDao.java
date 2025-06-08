@@ -9,6 +9,7 @@ import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 
@@ -46,6 +47,16 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
         this.gson = new GsonBuilder()
             .registerTypeAdapter(PlayerVirtualItem.class, new PlayerVirtualItemJsonConverter())
             .create();
+
+        //Warmup validator.
+        //First validate calls on a class will be slow and can lag the main thread.
+        //After the initial validate calls additional calls to validate took < 1ms on local machine.
+        //Only needed for file dao since the db dao should always be accessed async.
+        new Thread(() -> {
+            Validator validator = validatorFactory.getValidator();
+            validator.validate(new PlayerVirtualItemPK());
+            validator.validate(new PlayerVirtualItem());
+        }).start();
     }
 
     @Override

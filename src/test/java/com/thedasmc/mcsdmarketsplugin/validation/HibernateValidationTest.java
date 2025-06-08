@@ -21,7 +21,6 @@ public class HibernateValidationTest {
     @Test
     public void ensureValidationOnEntityIsWorkingCorrectly() {
         Validator validator = validatorFactory.getValidator();
-
         PlayerVirtualItem playerVirtualItem = createSamplePlayerVirtualItem();
         playerVirtualItem.setQuantity(0L);
 

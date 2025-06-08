@@ -2,6 +2,8 @@ package com.thedasmc.mcsdmarketsplugin.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
+import com.tchristofferson.betterscheduler.BSAsyncTask;
+import com.tchristofferson.betterscheduler.TaskQueueRunner;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsapi.response.impl.ItemResponse;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.ItemResponseWrapper;
@@ -10,7 +12,6 @@ import com.thedasmc.mcsdmarketsplugin.support.ItemUtil;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import com.thedasmc.mcsdmarketsplugin.support.messages.MessageVariable;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Placeholder;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 
@@ -25,6 +26,7 @@ public class CheckPriceCommand extends BaseCommand {
 
     @Dependency private MCSDMarkets plugin;
     @Dependency private MCSDMarketsAPI mcsdMarketsAPI;
+    @Dependency private TaskQueueRunner taskQueueRunner;
 
     @Subcommand("check")
     @CommandPermission(CHECK_COMMAND_PERMISSION)
@@ -34,28 +36,31 @@ public class CheckPriceCommand extends BaseCommand {
     public void handleCheckCommand(CommandSender sender, String materialName) {
         Optional<Material> optionalMaterial = ItemUtil.getMaterial(materialName);
 
-        if (!optionalMaterial.isPresent()) {
+        if (optionalMaterial.isEmpty()) {
             sender.sendMessage(Message.INVALID_MATERIAL.getText());
             return;
         }
 
         Material material = optionalMaterial.get();
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            ItemResponseWrapper responseWrapper;
+        taskQueueRunner.scheduleAsyncTask(new BSAsyncTask(plugin) {
+            @Override
+            public void run() {
+                ItemResponseWrapper responseWrapper;
 
-            try {
-                responseWrapper = mcsdMarketsAPI.getItem(material.name());
-            } catch (IOException e) {
-                sender.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
-                return;
-            }
+                try {
+                    responseWrapper = mcsdMarketsAPI.getItem(material.name());
+                } catch (IOException e) {
+                    sender.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+                    return;
+                }
 
-            if (responseWrapper.isSuccessful()) {
-                ItemResponse response = responseWrapper.getSuccessfulResponse();
-                sender.sendMessage(Message.CHECK_PRICE.getText(new MessageVariable(Placeholder.PRICE, response.getCurrentPrice().toPlainString())));
-            } else {
-                sender.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, responseWrapper.getErrorResponse().getMessage())));
+                if (responseWrapper.isSuccessful()) {
+                    ItemResponse response = responseWrapper.getSuccessfulResponse();
+                    sender.sendMessage(Message.CHECK_PRICE.getText(new MessageVariable(Placeholder.PRICE, response.getCurrentPrice().toPlainString())));
+                } else {
+                    sender.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, responseWrapper.getErrorResponse().getMessage())));
+                }
             }
         });
     }

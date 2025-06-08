@@ -2,6 +2,9 @@ package com.thedasmc.mcsdmarketsplugin.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
+import com.tchristofferson.betterscheduler.BSAsyncTask;
+import com.tchristofferson.betterscheduler.BSCallable;
+import com.tchristofferson.betterscheduler.TaskQueueRunner;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsapi.request.PageRequest;
 import com.thedasmc.mcsdmarketsapi.response.impl.ItemPageResponse;
@@ -11,7 +14,6 @@ import com.thedasmc.mcsdmarketsplugin.support.gui.GUISupport;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import com.thedasmc.mcsdmarketsplugin.support.messages.MessageVariable;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Placeholder;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.io.IOException;
@@ -25,6 +27,7 @@ public class ViewCommand extends BaseCommand {
     @Dependency private MCSDMarkets plugin;
     @Dependency private MCSDMarketsAPI mcsdMarketsAPI;
     @Dependency private GUISupport guiSupport;
+    @Dependency private TaskQueueRunner taskRunner;
 
     @Subcommand("view")
     @CommandPermission(VIEW_COMMAND_PERMISSION)
@@ -33,31 +36,39 @@ public class ViewCommand extends BaseCommand {
     public void handleViewCommand(Player player, @co.aikar.commands.annotation.Optional @Conditions("gt0") final Integer page) {
         final int pageIndex = page == null ? 0 : page - 1;
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            PageRequest request = new PageRequest();
-            request.setPage(pageIndex);
-            request.setPageSize(GUISupport.INVENTORY_SIZE - 9);
+        taskRunner.scheduleAsyncTask(new BSAsyncTask(plugin) {
+            @Override
+            public void run() {
+                PageRequest request = new PageRequest();
+                request.setPage(pageIndex);
+                request.setPageSize(GUISupport.INVENTORY_SIZE - 9);
 
-            ItemPageResponseWrapper itemPageResponseWrapper;
+                ItemPageResponseWrapper itemPageResponseWrapper;
 
-            try {
-                itemPageResponseWrapper = mcsdMarketsAPI.getItems(request);
-            } catch (IOException e) {
-                player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
-                return;
+                try {
+                    itemPageResponseWrapper = mcsdMarketsAPI.getItems(request);
+                } catch (IOException e) {
+                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+                    return;
+                }
+
+                if (!itemPageResponseWrapper.isSuccessful()) {
+                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, itemPageResponseWrapper.getErrorResponse().getMessage())));
+                    return;
+                }
+
+                ItemPageResponse itemPageResponse = itemPageResponseWrapper.getSuccessfulResponse();
+
+                taskRunner.submitSyncTask(new BSCallable<Void>() {
+                    @Override
+                    protected Void execute() {
+                        if (player.isOnline())
+                            guiSupport.openMenu(player, itemPageResponse);
+
+                        return null;
+                    }
+                });
             }
-
-            if (!itemPageResponseWrapper.isSuccessful()) {
-                player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, itemPageResponseWrapper.getErrorResponse().getMessage())));
-                return;
-            }
-
-            ItemPageResponse itemPageResponse = itemPageResponseWrapper.getSuccessfulResponse();
-
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                if (player.isOnline())
-                    guiSupport.openMenu(player, itemPageResponse);
-            });
         });
     }
 

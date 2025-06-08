@@ -3,6 +3,7 @@ package com.thedasmc.mcsdmarketsplugin;
 import co.aikar.commands.BukkitCommandManager;
 import co.aikar.commands.ConditionFailedException;
 import co.aikar.commands.PaperCommandManager;
+import com.tchristofferson.betterscheduler.TaskQueueRunner;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsplugin.commands.*;
 import com.thedasmc.mcsdmarketsplugin.config.SessionFactoryManager;
@@ -37,6 +38,7 @@ public class MCSDMarkets extends JavaPlugin {
     private GUISupport guiSupport;
     private PlayerVirtualItemDao playerVirtualItemDao;
     private SellInventoryManager sellInventoryManager;
+    private TaskQueueRunner taskQueueRunner;
 
     @Override
     public void onEnable() {
@@ -61,9 +63,15 @@ public class MCSDMarkets extends JavaPlugin {
         initGuiSupport();
         initPlayerVirtualItemDao();
         initSellInventoryManager();
+        initTaskQueueRunner();
         initCommandManager();
 
         registerListeners();
+    }
+
+    @Override
+    public void onDisable() {
+        taskQueueRunner.shutdown();
     }
 
     public MCSDMarketsAPI getMcsdMarketsAPI() {
@@ -84,6 +92,10 @@ public class MCSDMarkets extends JavaPlugin {
 
     public SellInventoryManager getSellInventoryManager() {
         return sellInventoryManager;
+    }
+
+    public TaskQueueRunner getTaskQueueRunner() {
+        return taskQueueRunner;
     }
 
     private boolean initMCSDMarketsAPI() {
@@ -118,7 +130,7 @@ public class MCSDMarkets extends JavaPlugin {
             try {
                 this.playerVirtualItemDao = new PlayerVirtualItemDbDao(new SessionFactoryManager(this));
             } catch (Exception e) {
-                Bukkit.getLogger().log(Level.SEVERE, String.format("[%s] - Failed to initialize database connection! Are your connection details correct? Disabling plugin.", getName()), e);
+                Bukkit.getLogger().log(Level.SEVERE, String.format("[%s] - Failed to initialize database connection! Are your connection details correct? Disabling plugin.", getName()));
                 Bukkit.getPluginManager().disablePlugin(this);
             }
         } else {
@@ -150,6 +162,7 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerDependency(GUISupport.class, this.guiSupport);
         commandManager.registerDependency(PlayerVirtualItemDao.class, this.playerVirtualItemDao);
         commandManager.registerDependency(SellInventoryManager.class, this.sellInventoryManager);
+        commandManager.registerDependency(TaskQueueRunner.class, this.taskQueueRunner);
 
         //Conditions
         commandManager.getCommandConditions().addCondition(Integer.class, "gt0", ((context, execContext, value) -> {
@@ -165,6 +178,11 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerCommand(new WithdrawContractCommand());
         commandManager.registerCommand(new ViewCommand());
         commandManager.registerCommand(new SellInventoryCommand());
+    }
+
+    private void initTaskQueueRunner() {
+        //Scheduled with BukkitScheduler in constructor
+        taskQueueRunner = new TaskQueueRunner(this);
     }
 
     private void registerListeners() {

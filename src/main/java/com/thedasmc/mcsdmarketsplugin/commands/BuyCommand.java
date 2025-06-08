@@ -2,6 +2,9 @@ package com.thedasmc.mcsdmarketsplugin.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
+import com.tchristofferson.betterscheduler.BSAsyncTask;
+import com.tchristofferson.betterscheduler.BSCallable;
+import com.tchristofferson.betterscheduler.TaskQueueRunner;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsapi.enums.TransactionType;
 import com.thedasmc.mcsdmarketsapi.request.CreateTransactionRequest;
@@ -18,7 +21,6 @@ import com.thedasmc.mcsdmarketsplugin.support.messages.MessageVariable;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Placeholder;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -41,6 +43,7 @@ public class BuyCommand extends BaseCommand {
     @Dependency private MCSDMarketsAPI mcsdMarketsAPI;
     @Dependency private Economy economy;
     @Dependency private PlayerVirtualItemDao playerVirtualItemDao;
+    @Dependency private TaskQueueRunner taskQueueRunner;
 
     @Subcommand("buy")
     @CommandPermission(BUY_COMMAND_PERMISSION)
@@ -58,84 +61,111 @@ public class BuyCommand extends BaseCommand {
 
         Material material = optionalMaterial.get();
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            //STEP 1: Get the item from MCSDMarkets web call for pricing info
-            ItemResponseWrapper itemResponseWrapper;
+        taskQueueRunner.scheduleAsyncTask(new BSAsyncTask(plugin) {
+            @Override
+            public void run() {
+                //STEP 1: Get the item from MCSDMarkets web call for pricing info
+                ItemResponseWrapper itemResponseWrapper;
 
-            try {
-                itemResponseWrapper = mcsdMarketsAPI.getItem(material.name());
-            } catch (IOException e) {
-                player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
-                return;
-            }
+                try {
+                    itemResponseWrapper = mcsdMarketsAPI.getItem(material.name());
+                } catch (IOException e) {
+                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+                    return;
+                }
 
-            if (!itemResponseWrapper.isSuccessful()) {
-                player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, itemResponseWrapper.getErrorResponse().getMessage())));
-                return;
-            }
+                if (!itemResponseWrapper.isSuccessful()) {
+                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, itemResponseWrapper.getErrorResponse().getMessage())));
+                    return;
+                }
 
-            //STEP 2: Check if the player has enough funds to buy the item
-            ItemResponse itemResponse = itemResponseWrapper.getSuccessfulResponse();
-            BigDecimal cost = itemResponse.getCurrentPrice().multiply(BigDecimal.valueOf(quantity));
-            EconomyResponse withdrawResponse;
+                //STEP 2: Check if the player has enough funds to buy the item
+                ItemResponse itemResponse = itemResponseWrapper.getSuccessfulResponse();
+                BigDecimal cost = itemResponse.getCurrentPrice().multiply(BigDecimal.valueOf(quantity));
+                EconomyResponse withdrawResponse;
 
-            try {
-                withdrawResponse = Bukkit.getScheduler().callSyncMethod(plugin, () -> economy.withdrawPlayer(player, cost.doubleValue())).get(3, TimeUnit.SECONDS);
-            } catch (ExecutionException | InterruptedException | TimeoutException e) {
-                throw new RuntimeException("Failed to call sync method to withdraw player funds!", e);
-            }
+                try {
+                    withdrawResponse = taskQueueRunner.submitSyncTask(new BSCallable<EconomyResponse>() {
+                        @Override
+                        protected EconomyResponse execute() {
+                            return economy.withdrawPlayer(player, cost.doubleValue());
+                        }
+                    }).get(30, TimeUnit.SECONDS);
+                } catch (ExecutionException | InterruptedException | TimeoutException e) {
+                    throw new RuntimeException("Failed to call sync method to withdraw player funds!", e);
+                }
 
-            if (!withdrawResponse.transactionSuccess()) {
-                player.sendMessage(Message.VAULT_ERROR.getText(new MessageVariable(Placeholder.ERROR, withdrawResponse.errorMessage)));
-                return;
-            }
+                if (!withdrawResponse.transactionSuccess()) {
+                    player.sendMessage(Message.VAULT_ERROR.getText(new MessageVariable(Placeholder.ERROR, withdrawResponse.errorMessage)));
+                    return;
+                }
 
-            //STEP 3: Save the item to the player's virtual inventory
-            PlayerVirtualItemPK pk = new PlayerVirtualItemPK(playerId.toString(), material.name());
-            Optional<PlayerVirtualItem> optionalPlayerVirtualItem = playerVirtualItemDao.findById(pk);
-            PlayerVirtualItem playerVirtualItem;
+                //STEP 3: Save the item to the player's virtual inventory
+                PlayerVirtualItemPK pk = new PlayerVirtualItemPK(playerId.toString(), material.name());
+                Optional<PlayerVirtualItem> optionalPlayerVirtualItem = playerVirtualItemDao.findById(pk);
+                PlayerVirtualItem playerVirtualItem;
 
-            if (optionalPlayerVirtualItem.isPresent()) {
-                playerVirtualItem = optionalPlayerVirtualItem.get();
-                playerVirtualItem.setQuantity(playerVirtualItem.getQuantity() + quantity.longValue());
-            } else {
-                playerVirtualItem = new PlayerVirtualItem();
-                playerVirtualItem.setId(pk);
-                playerVirtualItem.setQuantity(quantity.longValue());
-            }
+                if (optionalPlayerVirtualItem.isPresent()) {
+                    playerVirtualItem = optionalPlayerVirtualItem.get();
+                    playerVirtualItem.setQuantity(playerVirtualItem.getQuantity() + quantity.longValue());
+                } else {
+                    playerVirtualItem = new PlayerVirtualItem();
+                    playerVirtualItem.setId(pk);
+                    playerVirtualItem.setQuantity(quantity.longValue());
+                }
 
-            try {
-                playerVirtualItemDao.save(playerVirtualItem);
-            } catch (Exception e) {
-                player.sendMessage(Message.SAVE_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
-                Bukkit.getScheduler().callSyncMethod(plugin, () -> economy.depositPlayer(player, cost.doubleValue()));
-                return;
-            }
+                try {
+                    playerVirtualItemDao.save(playerVirtualItem);
+                } catch (Exception e) {
+                    player.sendMessage(Message.SAVE_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+                    taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
+                        @Override
+                        protected Void execute() {
+                            economy.depositPlayer(player, cost.doubleValue());
+                            return null;
+                        }
+                    });
 
-            //STEP 4: Call MCSDMarkets to create a transaction to record the purchase
-            CreateTransactionRequest request = new CreateTransactionRequest();
-            request.setPlayerId(playerId);
-            request.setTransactionType(TransactionType.PURCHASE);
-            request.setMaterial(material.name());
-            request.setQuantity(quantity);
+                    return;
+                }
 
-            CreateTransactionResponseWrapper createTransactionResponseWrapper;
+                //STEP 4: Call MCSDMarkets to create a transaction to record the purchase
+                CreateTransactionRequest request = new CreateTransactionRequest();
+                request.setPlayerId(playerId);
+                request.setTransactionType(TransactionType.PURCHASE);
+                request.setMaterial(material.name());
+                request.setQuantity(quantity);
 
-            try {
-                createTransactionResponseWrapper = mcsdMarketsAPI.createTransaction(request);
-            } catch (IOException e) {
-                player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
-                Bukkit.getScheduler().callSyncMethod(plugin, () -> economy.depositPlayer(player, cost.doubleValue()));
-                return;
-            }
+                CreateTransactionResponseWrapper createTransactionResponseWrapper;
 
-            if (!createTransactionResponseWrapper.isSuccessful()) {
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    economy.depositPlayer(player, cost.doubleValue());
-                    ItemStack contractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, player.getInventory());
-                    ItemUtil.subtractQuantity(plugin, contractItem, quantity);
-                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, createTransactionResponseWrapper.getErrorResponse().getMessage())));
-                });
+                try {
+                    createTransactionResponseWrapper = mcsdMarketsAPI.createTransaction(request);
+                } catch (IOException e) {
+                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+
+                    taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
+                        @Override
+                        protected Void execute() {
+                            economy.depositPlayer(player, cost.doubleValue());
+                            return null;
+                        }
+                    });
+
+                    return;
+                }
+
+                if (!createTransactionResponseWrapper.isSuccessful()) {
+                    taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
+                        @Override
+                        protected Void execute() {
+                            economy.depositPlayer(player, cost.doubleValue());
+                            ItemStack contractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, player.getInventory());
+                            ItemUtil.subtractQuantity(plugin, contractItem, quantity);
+                            player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, createTransactionResponseWrapper.getErrorResponse().getMessage())));
+                            return null;
+                        }
+                    });
+                }
             }
         });
     }

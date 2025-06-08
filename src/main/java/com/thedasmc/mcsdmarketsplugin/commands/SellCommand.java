@@ -2,6 +2,9 @@ package com.thedasmc.mcsdmarketsplugin.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
+import com.tchristofferson.betterscheduler.BSAsyncTask;
+import com.tchristofferson.betterscheduler.BSCallable;
+import com.tchristofferson.betterscheduler.TaskQueueRunner;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsapi.enums.TransactionType;
 import com.thedasmc.mcsdmarketsapi.request.CreateTransactionRequest;
@@ -13,7 +16,6 @@ import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import com.thedasmc.mcsdmarketsplugin.support.messages.MessageVariable;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Placeholder;
 import net.milkbowl.vault.economy.Economy;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -32,6 +34,7 @@ public class SellCommand extends BaseCommand {
     @Dependency private MCSDMarkets plugin;
     @Dependency private MCSDMarketsAPI mcsdMarketsAPI;
     @Dependency private Economy economy;
+    @Dependency private TaskQueueRunner taskQueueRunner;
 
     @Subcommand("sell")
     @CommandPermission(BUY_COMMAND_PERMISSION)
@@ -58,60 +61,79 @@ public class SellCommand extends BaseCommand {
             return;
         }
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            ItemResponseWrapper itemResponseWrapper;
+        taskQueueRunner.scheduleAsyncTask(new BSAsyncTask(plugin) {
+            @Override
+            public void run() {
+                ItemResponseWrapper itemResponseWrapper;
 
-            try {
-                itemResponseWrapper = mcsdMarketsAPI.getItem(material.name());
-            } catch (IOException e) {
-                player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
-                return;
-            }
-
-            if (!itemResponseWrapper.isSuccessful()) {
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    refund(material, inventory, taken);
-                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, itemResponseWrapper.getErrorResponse().getMessage())));
-                });
-
-                return;
-            }
-
-            BigDecimal price = itemResponseWrapper.getSuccessfulResponse().getCurrentPrice()
-                .multiply(BigDecimal.valueOf(taken));
-
-            CreateTransactionRequest createTransactionRequest = new CreateTransactionRequest();
-            createTransactionRequest.setPlayerId(player.getUniqueId());
-            createTransactionRequest.setTransactionType(TransactionType.SALE);
-            createTransactionRequest.setMaterial(material.name());
-            createTransactionRequest.setQuantity(taken);
-
-            CreateTransactionResponseWrapper createTransactionResponseWrapper;
-
-            try {
-                createTransactionResponseWrapper = mcsdMarketsAPI.createTransaction(createTransactionRequest);
-            } catch (IOException e) {
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    refund(material, inventory, taken);
+                try {
+                    itemResponseWrapper = mcsdMarketsAPI.getItem(material.name());
+                } catch (IOException e) {
                     player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+                    return;
+                }
+
+                if (!itemResponseWrapper.isSuccessful()) {
+                    taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
+                        @Override
+                        protected Void execute() {
+                            refund(material, inventory, taken);
+                            player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, itemResponseWrapper.getErrorResponse().getMessage())));
+                            return null;
+                        }
+                    });
+
+                    return;
+                }
+
+                BigDecimal price = itemResponseWrapper.getSuccessfulResponse().getCurrentPrice()
+                    .multiply(BigDecimal.valueOf(taken));
+
+                CreateTransactionRequest createTransactionRequest = new CreateTransactionRequest();
+                createTransactionRequest.setPlayerId(player.getUniqueId());
+                createTransactionRequest.setTransactionType(TransactionType.SALE);
+                createTransactionRequest.setMaterial(material.name());
+                createTransactionRequest.setQuantity(taken);
+
+                CreateTransactionResponseWrapper createTransactionResponseWrapper;
+
+                try {
+                    createTransactionResponseWrapper = mcsdMarketsAPI.createTransaction(createTransactionRequest);
+                } catch (IOException e) {
+                    taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
+                        @Override
+                        protected Void execute() {
+                            refund(material, inventory, taken);
+                            player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+                            return null;
+                        }
+                    });
+
+                    return;
+                }
+
+                if (!createTransactionResponseWrapper.isSuccessful()) {
+                    taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
+                        @Override
+                        protected Void execute() {
+                            refund(material, inventory, taken);
+                            player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, createTransactionResponseWrapper.getErrorResponse().getMessage())));
+                            return null;
+                        }
+                    });
+
+                    return;
+                }
+
+                taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
+                    @Override
+                    protected Void execute() {
+                        economy.depositPlayer(player, price.doubleValue());
+                        player.sendMessage(Message.SALE_SUCCESSFUL.getText(new MessageVariable(Placeholder.ITEM, material.name()), new MessageVariable(Placeholder.PRICE, price.toPlainString())));
+                        return null;
+                    }
                 });
-
-                return;
             }
-
-            if (!createTransactionResponseWrapper.isSuccessful()) {
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    refund(material, inventory, taken);
-                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, createTransactionResponseWrapper.getErrorResponse().getMessage())));
-                });
-
-                return;
-            }
-
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                economy.depositPlayer(player, price.doubleValue());
-                player.sendMessage(Message.SALE_SUCCESSFUL.getText(new MessageVariable(Placeholder.ITEM, material.name()), new MessageVariable(Placeholder.PRICE, price.toPlainString())));
-            });
         });
     }
 
