@@ -166,9 +166,13 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
 
     //Writes player's save file to disk
     private void saveFile(UUID uuid, Collection<PlayerVirtualItem> playerVirtualItems) throws IOException {
-        String json = gson.toJson(playerVirtualItems);
         File file = new File(savesDir, uuid + ".json");
-        Files.writeString(file.toPath(), json, StandardOpenOption.CREATE);
+
+        if (playerVirtualItems.isEmpty() && file.exists() && file.delete())
+            return;
+
+        String json = gson.toJson(playerVirtualItems);
+        Files.writeString(file.toPath(), json, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     //Run code locked on the specified uuid
@@ -181,12 +185,12 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
         } finally {
             lock.unlock();
             locks.compute(uuid, (k, currentLock) -> {
-                try {
-                    if (currentLock == lock && lock.tryLock()) {
+                if (currentLock == lock && lock.tryLock()) {
+                    try {
                         return null;
+                    } finally {
+                        lock.unlock();
                     }
-                } finally {
-                    lock.unlock();
                 }
 
                 return currentLock;

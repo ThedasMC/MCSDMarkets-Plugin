@@ -99,6 +99,7 @@ public class SellCommand extends BaseCommand {
                     playerVirtualItemDao.delete(playerVirtualItem);
                 } else {
                     playerVirtualItem.setQuantity(playerVirtualItem.getQuantity() - toSell);
+                    playerVirtualItemDao.save(playerVirtualItem);
                 }
 
                 BigDecimal price = itemResponseWrapper.getSuccessfulResponse().getCurrentPrice()
