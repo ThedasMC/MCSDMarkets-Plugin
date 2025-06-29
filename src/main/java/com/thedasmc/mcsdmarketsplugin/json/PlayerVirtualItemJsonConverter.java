@@ -17,7 +17,7 @@ public class PlayerVirtualItemJsonConverter implements JsonSerializer<PlayerVirt
 
         PlayerVirtualItem playerVirtualItem = new PlayerVirtualItem();
         playerVirtualItem.setId(id);
-        playerVirtualItem.setQuantity(jsonObject.get("quantity").getAsLong());
+        playerVirtualItem.setQuantity(jsonObject.get("quantity").getAsInt());
         playerVirtualItem.setVersion(jsonObject.get("version").getAsInt());
 
         return playerVirtualItem;

@@ -7,6 +7,7 @@ import com.thedasmc.mcsdmarketsapi.request.BatchTransactionRequest;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.BatchItemResponseWrapper;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.BatchSellResponseWrapper;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
+import com.thedasmc.mcsdmarketsplugin.support.Constants;
 import com.thedasmc.mcsdmarketsplugin.support.SellInventoryManager;
 import com.thedasmc.mcsdmarketsplugin.support.gui.GUISupport;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
@@ -75,7 +76,11 @@ public class InventoryCloseEventListener implements Listener {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             //Step 1: Get items for the pricing info
             Map<String, Integer> itemAmountMap = Arrays.stream(storageContents)
+                .filter(Objects::nonNull)
                 .collect(Collectors.groupingBy(itemStack -> itemStack.getType().name(), Collectors.summingInt(ItemStack::getAmount)));
+
+            if (itemAmountMap.isEmpty())
+                return;
 
             BatchItemResponseWrapper getItemsResponseWrapper;
 
@@ -107,7 +112,7 @@ public class InventoryCloseEventListener implements Listener {
 
             try {
                 economyResponse = Bukkit.getScheduler().callSyncMethod(plugin, () -> economy.depositPlayer(player, saleValue.doubleValue()))
-                    .get(10, TimeUnit.SECONDS);
+                    .get(Constants.MAX_SYN_THREAD_WAIT.toMillis(), TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 Bukkit.getLogger().warning(String.format("[%s] - Interrupted while trying to deposit money to player with uuid %s. Amount: %s", plugin.getName(), uuid, saleValue.doubleValue()));

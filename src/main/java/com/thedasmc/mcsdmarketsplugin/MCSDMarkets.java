@@ -12,7 +12,6 @@ import com.thedasmc.mcsdmarketsplugin.dao.db.PlayerVirtualItemDbDao;
 import com.thedasmc.mcsdmarketsplugin.dao.file.PlayerVirtualItemFileDao;
 import com.thedasmc.mcsdmarketsplugin.listener.InventoryClickEventListener;
 import com.thedasmc.mcsdmarketsplugin.listener.InventoryCloseEventListener;
-import com.thedasmc.mcsdmarketsplugin.listener.PlayerDropItemEventListener;
 import com.thedasmc.mcsdmarketsplugin.support.SellInventoryManager;
 import com.thedasmc.mcsdmarketsplugin.support.gui.GUISupport;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
@@ -86,16 +85,8 @@ public class MCSDMarkets extends JavaPlugin {
         return guiSupport;
     }
 
-    public PlayerVirtualItemDao getPlayerVirtualItemDao() {
-        return playerVirtualItemDao;
-    }
-
     public SellInventoryManager getSellInventoryManager() {
         return sellInventoryManager;
-    }
-
-    public TaskQueueRunner getTaskQueueRunner() {
-        return taskQueueRunner;
     }
 
     private boolean initMCSDMarketsAPI() {
@@ -165,11 +156,8 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerDependency(TaskQueueRunner.class, this.taskQueueRunner);
 
         //Conditions
-        commandManager.getCommandConditions().addCondition(Integer.class, "gt0", ((context, execContext, value) -> {
-            //Null value will not be validated
-            if (value != null && value <= 0)
-                throw new ConditionFailedException(Message.INVALID_QUANTITY.getText());
-        }));
+        commandManager.getCommandConditions().addCondition(Integer.class, "gt0", ((context, execContext, value) -> ensureGt0Condition(value != null ? value.longValue() : null)));
+        commandManager.getCommandConditions().addCondition(Long.class, "gt0", ((context, execContext, value) -> ensureGt0Condition(value)));
 
         //Commands
         commandManager.registerCommand(new CheckPriceCommand());
@@ -187,8 +175,12 @@ public class MCSDMarkets extends JavaPlugin {
 
     private void registerListeners() {
         PluginManager pluginManager = getServer().getPluginManager();
-        pluginManager.registerEvents(new PlayerDropItemEventListener(this), this);
         pluginManager.registerEvents(new InventoryClickEventListener(this), this);
         pluginManager.registerEvents(new InventoryCloseEventListener(this), this);
+    }
+
+    private void ensureGt0Condition(Long value) {
+        if (value != null && value <= 0)
+            throw new ConditionFailedException(Message.INVALID_QUANTITY.getText());
     }
 }

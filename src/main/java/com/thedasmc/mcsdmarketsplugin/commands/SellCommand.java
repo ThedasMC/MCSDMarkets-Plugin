@@ -11,6 +11,9 @@ import com.thedasmc.mcsdmarketsapi.request.CreateTransactionRequest;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.CreateTransactionResponseWrapper;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.ItemResponseWrapper;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
+import com.thedasmc.mcsdmarketsplugin.dao.PlayerVirtualItemDao;
+import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
+import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
 import com.thedasmc.mcsdmarketsplugin.support.ItemUtil;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import com.thedasmc.mcsdmarketsplugin.support.messages.MessageVariable;
@@ -18,12 +21,11 @@ import com.thedasmc.mcsdmarketsplugin.support.messages.Placeholder;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.UUID;
 
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.BASE_COMMAND;
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.BUY_COMMAND_PERMISSION;
@@ -34,12 +36,13 @@ public class SellCommand extends BaseCommand {
     @Dependency private MCSDMarkets plugin;
     @Dependency private MCSDMarketsAPI mcsdMarketsAPI;
     @Dependency private Economy economy;
+    @Dependency private PlayerVirtualItemDao playerVirtualItemDao;
     @Dependency private TaskQueueRunner taskQueueRunner;
 
     @Subcommand("sell")
     @CommandPermission(BUY_COMMAND_PERMISSION)
     @Syntax("<material> <quantity>")
-    @Description("Sell items")
+    @Description("Sell items from item portfolio. Will not sell items from your inventory, to do that, don't pass any args to open sell inventory.")
     @CommandCompletion("@materials")
     public void handleSellCommand(Player player, String materialName, @co.aikar.commands.annotation.Optional @Conditions("gt0") final Integer quantity) {
         Optional<Material> optionalMaterial = ItemUtil.getMaterial(materialName);
@@ -51,19 +54,17 @@ public class SellCommand extends BaseCommand {
 
         Material material = optionalMaterial.get();
 
-        final boolean sellAll = quantity == null;
-        Inventory inventory = player.getInventory();
-        int taken = ItemUtil.takeContracts(plugin, material, inventory, sellAll ? -1 : quantity);
-
-        if (!sellAll && taken < quantity) {
-            refund(material, inventory, taken);
-            player.sendMessage(Message.INSUFFICIENT_QUANTITY.getText());
-            return;
-        }
-
         taskQueueRunner.scheduleAsyncTask(new BSAsyncTask(plugin) {
             @Override
             public void run() {
+                PlayerVirtualItemPK id = new PlayerVirtualItemPK(player.getUniqueId().toString(), material.name());
+                Optional<PlayerVirtualItem> optionalPlayerVirtualItem = playerVirtualItemDao.findById(id);
+
+                if (optionalPlayerVirtualItem.isEmpty()) {
+                    player.sendMessage(Message.INSUFFICIENT_QUANTITY.getText());
+                    return;
+                }
+
                 ItemResponseWrapper itemResponseWrapper;
 
                 try {
@@ -77,7 +78,6 @@ public class SellCommand extends BaseCommand {
                     taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
                         @Override
                         protected Void execute() {
-                            refund(material, inventory, taken);
                             player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, itemResponseWrapper.getErrorResponse().getMessage())));
                             return null;
                         }
@@ -86,14 +86,29 @@ public class SellCommand extends BaseCommand {
                     return;
                 }
 
+                PlayerVirtualItem playerVirtualItem = optionalPlayerVirtualItem.get();
+                final boolean sellAll = quantity == null;
+                final int toSell = sellAll ? playerVirtualItem.getQuantity() : quantity;
+
+                if (playerVirtualItem.getQuantity() < toSell) {
+                    player.sendMessage(Message.INSUFFICIENT_QUANTITY.getText());
+                    return;
+                }
+
+                if (sellAll || playerVirtualItem.getQuantity() == toSell) {
+                    playerVirtualItemDao.delete(playerVirtualItem);
+                } else {
+                    playerVirtualItem.setQuantity(playerVirtualItem.getQuantity() - toSell);
+                }
+
                 BigDecimal price = itemResponseWrapper.getSuccessfulResponse().getCurrentPrice()
-                    .multiply(BigDecimal.valueOf(taken));
+                    .multiply(BigDecimal.valueOf(toSell));
 
                 CreateTransactionRequest createTransactionRequest = new CreateTransactionRequest();
                 createTransactionRequest.setPlayerId(player.getUniqueId());
                 createTransactionRequest.setTransactionType(TransactionType.SALE);
                 createTransactionRequest.setMaterial(material.name());
-                createTransactionRequest.setQuantity(taken);
+                createTransactionRequest.setQuantity(toSell);
 
                 CreateTransactionResponseWrapper createTransactionResponseWrapper;
 
@@ -103,8 +118,8 @@ public class SellCommand extends BaseCommand {
                     taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
                         @Override
                         protected Void execute() {
-                            refund(material, inventory, taken);
                             player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+                            refund(player.getUniqueId(), material, toSell);
                             return null;
                         }
                     });
@@ -116,8 +131,8 @@ public class SellCommand extends BaseCommand {
                     taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
                         @Override
                         protected Void execute() {
-                            refund(material, inventory, taken);
                             player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, createTransactionResponseWrapper.getErrorResponse().getMessage())));
+                            refund(player.getUniqueId(), material, toSell);
                             return null;
                         }
                     });
@@ -137,17 +152,18 @@ public class SellCommand extends BaseCommand {
         });
     }
 
-    private void refund(Material material, Inventory inventory, Integer quantity) {
-        if (quantity == 0)
-            return;
+    private void refund(UUID playerId, Material material, Integer quantity) {
+        PlayerVirtualItemPK id = new PlayerVirtualItemPK(playerId.toString(), material.name());
+        Optional<PlayerVirtualItem> optionalPlayerVirtualItem = playerVirtualItemDao.findById(id);
 
-        ItemStack contractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, inventory);
-
-        if (contractItem == null) {
-            contractItem = ItemUtil.getPurchaseContractItem(plugin, material, quantity);
-            inventory.addItem(contractItem);
+        if (optionalPlayerVirtualItem.isEmpty()) {
+            PlayerVirtualItem playerVirtualItem = new PlayerVirtualItem();
+            playerVirtualItem.setId(id);
+            playerVirtualItem.setQuantity(quantity);
+            playerVirtualItemDao.save(playerVirtualItem);
         } else {
-            ItemUtil.addQuantity(plugin, contractItem, quantity);
+            PlayerVirtualItem playerVirtualItem = optionalPlayerVirtualItem.get();
+            playerVirtualItem.setQuantity(playerVirtualItem.getQuantity() + quantity);
         }
     }
 

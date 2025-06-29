@@ -22,11 +22,11 @@ public class HibernateValidationTest {
     public void ensureValidationOnEntityIsWorkingCorrectly() {
         Validator validator = validatorFactory.getValidator();
         PlayerVirtualItem playerVirtualItem = createSamplePlayerVirtualItem();
-        playerVirtualItem.setQuantity(0L);
+        playerVirtualItem.setQuantity(0);
 
         Set<ConstraintViolation<PlayerVirtualItem>> violations = validator.validate(playerVirtualItem);
         assertEquals(1, violations.size(), "Issue with validation on quantity field!");
-        playerVirtualItem.setQuantity(1L);
+        playerVirtualItem.setQuantity(1);
 
         PlayerVirtualItemPK id = playerVirtualItem.getId();
         playerVirtualItem.setId(null);

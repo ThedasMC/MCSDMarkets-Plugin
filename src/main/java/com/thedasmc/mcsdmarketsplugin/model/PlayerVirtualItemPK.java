@@ -2,6 +2,7 @@ package com.thedasmc.mcsdmarketsplugin.model;
 
 import com.thedasmc.mcsdmarketsplugin.validation.IsMaterial;
 import com.thedasmc.mcsdmarketsplugin.validation.IsUuid;
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.validation.constraints.NotEmpty;
 
@@ -11,10 +12,12 @@ import java.util.Objects;
 public class PlayerVirtualItemPK {
 
     @IsUuid
+    @Column(length = 36)
     @NotEmpty(message = "uuid cannot be empty!")
     private String uuid;
 
     @IsMaterial
+    @Column(length = 64)
     @NotEmpty(message = "material cannot be empty!")
     private String material;
 

@@ -13,15 +13,13 @@ public enum Message {
     INVALID_MATERIALS("invalid-materials"),
     INVALID_QUANTITY("invalid-quantity"),
     VAULT_ERROR("vault-error"),
-    NO_INVENTORY_SPACE("no-inventory-space"),
     INSUFFICIENT_QUANTITY("insufficient-quantity"),
-    CANNOT_DROP_CONTRACT("cannot-drop-contract"),
     CHECK_PRICE("check-price"),
     PURCHASE("purchase-successful"),
     SALE_SUCCESSFUL("sale-successful"),
     BATCH_SALE_SUCCESSFUL("batch-sale-successful"),
-    CONTRACT_CREATED("contract-created"),
-    CONTRACT_WITHDRAWAL("contract-withdrawal"),
+    PORTFOLIO_WITHDRAWAL("portfolio-withdrawal"),
+    PARTIAL_WITHDRAWAL("partial-withdrawal"),
     SAVE_ERROR("save-error");
 
     private static FileConfiguration messagesConfig;

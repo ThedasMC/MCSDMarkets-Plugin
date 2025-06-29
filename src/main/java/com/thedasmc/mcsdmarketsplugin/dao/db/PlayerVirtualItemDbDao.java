@@ -37,10 +37,10 @@ public class PlayerVirtualItemDbDao implements PlayerVirtualItemDao {
     }
 
     @Override
-    public void deleteById(PlayerVirtualItemPK pk) {
+    public void delete(PlayerVirtualItem playerVirtualItem) {
         try (Session session = sessionFactoryManager.openSession()) {
             Transaction transaction = session.beginTransaction();
-            Optional.ofNullable(session.get(PlayerVirtualItem.class, pk)).ifPresent(session::remove);
+            session.remove(playerVirtualItem);
             transaction.commit();
         }
     }

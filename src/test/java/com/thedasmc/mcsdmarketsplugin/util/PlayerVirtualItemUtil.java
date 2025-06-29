@@ -13,7 +13,7 @@ public class PlayerVirtualItemUtil {
         PlayerVirtualItemPK id = new PlayerVirtualItemPK(UUID.randomUUID().toString(), Material.DIAMOND.name());
         PlayerVirtualItem pvi = new PlayerVirtualItem();
         pvi.setId(id);
-        pvi.setQuantity(5L);
+        pvi.setQuantity(5);
 
         return pvi;
     }

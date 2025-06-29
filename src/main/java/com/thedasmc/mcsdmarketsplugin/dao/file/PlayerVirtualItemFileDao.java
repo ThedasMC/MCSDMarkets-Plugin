@@ -112,21 +112,24 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
     }
 
     @Override
-    public void deleteById(PlayerVirtualItemPK pk) {
-        validatorFactory.getValidator().validate(pk);
-
+    public void delete(PlayerVirtualItem playerVirtualItem) {
         try {
-            runWithLock(UUID.fromString(pk.getUuid()), () -> {
-                Map<String, PlayerVirtualItem> playerVirtualItems = loadPlayerVirtualItems(UUID.fromString(pk.getUuid())).stream()
-                    .collect(Collectors.toMap(pvi -> pvi.getId().getMaterial(), Function.identity()));
+            runWithLock(UUID.fromString(playerVirtualItem.getId().getUuid()), () -> {
+                Optional<PlayerVirtualItem> optionalPlayerVirtualItem = findById(playerVirtualItem.getId());
 
-                PlayerVirtualItem removed = playerVirtualItems.remove(pk.getMaterial());
+                if (optionalPlayerVirtualItem.isEmpty())
+                    return null;
 
-                if (removed != null)
-                    saveFile(UUID.fromString(pk.getUuid()), playerVirtualItems.values());
+                PlayerVirtualItem fetchedPlayerVirtualItem = optionalPlayerVirtualItem.get();
 
+                if (!fetchedPlayerVirtualItem.getVersion().equals(playerVirtualItem.getVersion()))
+                    throw new OptimisticLockException();
+
+                deleteById(fetchedPlayerVirtualItem.getId());
                 return null;
             });
+        } catch (OptimisticLockException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }
@@ -135,6 +138,16 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
     @Override
     public void shutdown() {
         validatorFactory.close();
+    }
+
+    private void deleteById(PlayerVirtualItemPK pk) throws IOException {
+        Map<String, PlayerVirtualItem> playerVirtualItems = loadPlayerVirtualItems(UUID.fromString(pk.getUuid())).stream()
+            .collect(Collectors.toMap(pvi -> pvi.getId().getMaterial(), Function.identity()));
+
+        PlayerVirtualItem removed = playerVirtualItems.remove(pk.getMaterial());
+
+        if (removed != null)
+            saveFile(UUID.fromString(pk.getUuid()), playerVirtualItems.values());
     }
 
     //Loads player's save file from disk

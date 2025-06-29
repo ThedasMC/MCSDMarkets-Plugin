@@ -15,6 +15,7 @@ import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
 import com.thedasmc.mcsdmarketsplugin.dao.PlayerVirtualItemDao;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
+import com.thedasmc.mcsdmarketsplugin.support.Constants;
 import com.thedasmc.mcsdmarketsplugin.support.ItemUtil;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import com.thedasmc.mcsdmarketsplugin.support.messages.MessageVariable;
@@ -90,7 +91,7 @@ public class BuyCommand extends BaseCommand {
                         protected EconomyResponse execute() {
                             return economy.withdrawPlayer(player, cost.doubleValue());
                         }
-                    }).get(30, TimeUnit.SECONDS);
+                    }).get(Constants.MAX_SYN_THREAD_WAIT.toMillis(), TimeUnit.MILLISECONDS);
                 } catch (ExecutionException | InterruptedException | TimeoutException e) {
                     throw new RuntimeException("Failed to call sync method to withdraw player funds!", e);
                 }
@@ -107,11 +108,11 @@ public class BuyCommand extends BaseCommand {
 
                 if (optionalPlayerVirtualItem.isPresent()) {
                     playerVirtualItem = optionalPlayerVirtualItem.get();
-                    playerVirtualItem.setQuantity(playerVirtualItem.getQuantity() + quantity.longValue());
+                    playerVirtualItem.setQuantity(playerVirtualItem.getQuantity() + quantity);
                 } else {
                     playerVirtualItem = new PlayerVirtualItem();
                     playerVirtualItem.setId(pk);
-                    playerVirtualItem.setQuantity(quantity.longValue());
+                    playerVirtualItem.setQuantity(quantity);
                 }
 
                 try {
@@ -142,7 +143,6 @@ public class BuyCommand extends BaseCommand {
                     createTransactionResponseWrapper = mcsdMarketsAPI.createTransaction(request);
                 } catch (IOException e) {
                     player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
-
                     taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
                         @Override
                         protected Void execute() {
@@ -159,13 +159,15 @@ public class BuyCommand extends BaseCommand {
                         @Override
                         protected Void execute() {
                             economy.depositPlayer(player, cost.doubleValue());
-                            ItemStack contractItem = ItemUtil.findFirstPurchaseContractItem(plugin, material, player.getInventory());
-                            ItemUtil.subtractQuantity(plugin, contractItem, quantity);
                             player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, createTransactionResponseWrapper.getErrorResponse().getMessage())));
                             return null;
                         }
                     });
+
+                    return;
                 }
+
+                player.sendMessage(Message.PURCHASE.getText(new MessageVariable(Placeholder.ITEM, material.name()), new MessageVariable(Placeholder.PRICE, cost.toPlainString())));
             }
         });
     }

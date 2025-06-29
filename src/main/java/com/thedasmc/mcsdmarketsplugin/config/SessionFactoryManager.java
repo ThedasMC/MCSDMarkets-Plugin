@@ -1,11 +1,15 @@
 package com.thedasmc.mcsdmarketsplugin.config;
 
+import com.mysql.cj.jdbc.Driver;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
+import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform;
+import org.hibernate.hikaricp.internal.HikariCPConnectionProvider;
 
 public class SessionFactoryManager {
 
@@ -20,14 +24,15 @@ public class SessionFactoryManager {
         final String dbName = pluginConfig.getString("database.name");
 
         Configuration cfg = new Configuration()
-            .setProperty("hibernate.connection.provider_class", org.hibernate.hikaricp.internal.HikariCPConnectionProvider.class.getName())
-            .setProperty("hibernate.transaction.jta.platform", org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform.class.getName())
+            .addAnnotatedClass(PlayerVirtualItem.class)
+            .setProperty("hibernate.connection.provider_class", HikariCPConnectionProvider.class.getName())
+            .setProperty("hibernate.transaction.jta.platform", NoJtaPlatform.class.getName())
             .setProperty("hibernate.hikari.minimumIdle", "1")
             .setProperty("hibernate.hikari.maximumPoolSize", "10")
             .setProperty("hibernate.connection.url", "jdbc:mysql://" + dbHost + ":" + dbPort + "/" + dbName)
             .setProperty("hibernate.connection.username", dbUser)
             .setProperty("hibernate.connection.password", dbPassword)
-            .setProperty("hibernate.connection.driver_class", com.mysql.cj.jdbc.Driver.class.getName())
+            .setProperty("hibernate.connection.driver_class", Driver.class.getName())
             .setProperty("hibernate.show_sql", "false")
             .setProperty("hibernate.hbm2ddl.auto", "update");
 

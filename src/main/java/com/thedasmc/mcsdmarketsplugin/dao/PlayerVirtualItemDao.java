@@ -23,11 +23,7 @@ public interface PlayerVirtualItemDao {
      */
     PlayerVirtualItem save(PlayerVirtualItem playerVirtualItem);
 
-    /**
-     * Delete a player virtual item by its primary key. If the item does not exist, nothing will happen
-     * @param pk The primary key of the player virtual item to delete
-     */
-    void deleteById(PlayerVirtualItemPK pk);
+    void delete(PlayerVirtualItem playerVirtualItem);
 
     /**
      * Shutdown the DAO. This will close any open connections and free any resources

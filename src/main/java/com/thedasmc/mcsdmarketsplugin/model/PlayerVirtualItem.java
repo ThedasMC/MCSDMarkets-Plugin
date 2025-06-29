@@ -1,9 +1,6 @@
 package com.thedasmc.mcsdmarketsplugin.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Version;
+import jakarta.persistence.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -18,12 +15,12 @@ public class PlayerVirtualItem {
     @EmbeddedId
     private PlayerVirtualItemPK id;
 
-    @Column(name = "quantity", nullable = false)
+    @Column(nullable = false)
     @Positive(message = "Quantity must be > 0")
-    private Long quantity;
+    private Integer quantity;
 
     @Version
-    @Column(name = "version", nullable = false)
+    @Column(nullable = false)
     private Integer version;
 
     public PlayerVirtualItemPK getId() {
@@ -34,11 +31,11 @@ public class PlayerVirtualItem {
         this.id = id;
     }
 
-    public Long getQuantity() {
+    public Integer getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(Long quantity) {
+    public void setQuantity(Integer quantity) {
         this.quantity = quantity;
     }
 
