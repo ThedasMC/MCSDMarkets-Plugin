@@ -13,6 +13,7 @@ import com.thedasmc.mcsdmarketsplugin.dao.file.PlayerVirtualItemFileDao;
 import com.thedasmc.mcsdmarketsplugin.listener.InventoryClickEventListener;
 import com.thedasmc.mcsdmarketsplugin.listener.InventoryCloseEventListener;
 import com.thedasmc.mcsdmarketsplugin.support.SellInventoryManager;
+import com.thedasmc.mcsdmarketsplugin.support.TimeUnit;
 import com.thedasmc.mcsdmarketsplugin.support.gui.GUISupport;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import net.milkbowl.vault.economy.Economy;
@@ -89,6 +90,10 @@ public class MCSDMarkets extends JavaPlugin {
         return sellInventoryManager;
     }
 
+    public TaskQueueRunner getTaskQueueRunner() {
+        return taskQueueRunner;
+    }
+
     private boolean initMCSDMarketsAPI() {
         String apiKey = getConfig().getString("api-key");
 
@@ -147,6 +152,12 @@ public class MCSDMarkets extends JavaPlugin {
             .filter(name -> name.startsWith(context.getInput().trim().toUpperCase()))
             .collect(Collectors.toList()));
 
+        commandManager.getCommandCompletions().registerAsyncCompletion("timeUnits", context -> Arrays.stream(TimeUnit.values())
+            .map(TimeUnit::name)
+            .filter(timeUnit -> timeUnit.startsWith(context.getInput().trim().toUpperCase()))
+            .collect(Collectors.toList())
+        );
+
         //Dependencies
         commandManager.registerDependency(Economy.class, this.economy);
         commandManager.registerDependency(MCSDMarketsAPI.class, this.mcsdMarketsAPI);
@@ -166,6 +177,7 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerCommand(new WithdrawContractCommand());
         commandManager.registerCommand(new ViewCommand());
         commandManager.registerCommand(new SellInventoryCommand());
+        commandManager.registerCommand(new PriceHistoryCommand());
     }
 
     private void initTaskQueueRunner() {

@@ -4,9 +4,11 @@ timeout-error: '&c[MCSDMarkets]The server''s main thread took too long to execut
 invalid-material: '&c[MCSDMarkets]Invalid material!'
 invalid-materials: '&c[MCSDMarkets]1 or more invalid materials!'
 invalid-quantity: '&c[MCSDMarkets]Quantity must be > 0!'
+invalid-time-unit: '&c[MCSDMarkets]Invalid time unit!'
 vault-error: '&c[MCSDMarkets]{error}'
 insufficient-quantity: '&c[MCSDMarkets]You don''t have enough of that item!'
 save-error: '&c[MCSDMarkets]Failed to save: {error}'
+no-inventory-space: '&c[MCSDMarkets]Your inventory is full!'
 
 #non-error
 check-price: '&2[MCSDMarkets]&7Current Price: &2${price}'

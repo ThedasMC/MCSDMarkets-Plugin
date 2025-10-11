@@ -12,6 +12,7 @@ public enum Message {
     INVALID_MATERIAL("invalid-material"),
     INVALID_MATERIALS("invalid-materials"),
     INVALID_QUANTITY("invalid-quantity"),
+    INVALID_TIME_UNIT("invalid-time-unit"),
     VAULT_ERROR("vault-error"),
     INSUFFICIENT_QUANTITY("insufficient-quantity"),
     CHECK_PRICE("check-price"),
@@ -20,7 +21,8 @@ public enum Message {
     BATCH_SALE_SUCCESSFUL("batch-sale-successful"),
     PORTFOLIO_WITHDRAWAL("portfolio-withdrawal"),
     PARTIAL_WITHDRAWAL("partial-withdrawal"),
-    SAVE_ERROR("save-error");
+    SAVE_ERROR("save-error"),
+    NO_INVENTORY_SPACE("no-inventory-space");
 
     private static FileConfiguration messagesConfig;
 
