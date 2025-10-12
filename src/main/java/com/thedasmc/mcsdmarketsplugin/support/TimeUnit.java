@@ -5,8 +5,8 @@ import java.util.Optional;
 
 public enum TimeUnit {
 
-    DAYS(ChronoUnit.DAYS),
-    HOURS(ChronoUnit.HOURS),;
+    DAILY(ChronoUnit.DAYS),
+    HOURLY(ChronoUnit.HOURS),;
 
     public final ChronoUnit chronoUnit;
 

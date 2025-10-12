@@ -25,9 +25,4 @@ public interface PlayerVirtualItemDao {
 
     void delete(PlayerVirtualItem playerVirtualItem);
 
-    /**
-     * Shutdown the DAO. This will close any open connections and free any resources
-     */
-    void shutdown();
-
 }

@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class HistoricalGraphRenderer extends MapRenderer {
 
@@ -45,6 +46,7 @@ public class HistoricalGraphRenderer extends MapRenderer {
     private final ChronoUnit timeUnit;
     private final int timeAmount;
     private final AtomicBoolean isRendering = new AtomicBoolean(false);
+    private final AtomicReference<LocalDateTime> lastDrawTime = new AtomicReference<>(null);
 
     public HistoricalGraphRenderer(MCSDMarkets plugin, Material material, ChronoUnit timeUnit, int timeAmount) {
         super(true);//Allows render method to be called frequently
@@ -65,14 +67,19 @@ public class HistoricalGraphRenderer extends MapRenderer {
 
         LocalDateTime now = LocalDateTime.now(ZoneId.of("America/Chicago")).truncatedTo(ChronoUnit.HOURS);
 
+        if (lastDrawTime.get() != null && lastDrawTime.get().equals(now))
+            return;
+
         final GraphImageKey key = new GraphImageKey(material, now, timeUnit, timeAmount);
         Image graphImage = GRAPH_CACHE.getIfPresent(key);
 
         if (graphImage != null) {
             canvas.drawImage(0, 0, graphImage);
+            lastDrawTime.set(now);
             return;
         }
 
+        plugin.getLogger().info(String.format("Rendering graph for material %s . . .", material.name()));
         isRendering.set(true);
         plugin.getTaskQueueRunner().scheduleAsyncTask(new BSAsyncTask(plugin) {
             @Override
@@ -87,17 +94,18 @@ public class HistoricalGraphRenderer extends MapRenderer {
                         response = plugin.getMcsdMarketsAPI().getHoursHistoricalItemPrice(material.name(), timeAmount);
                     }
                 } catch (IOException e) {
-                    plugin.getLogger().warning(String.format("[%s] - Failed to get historical item prices for material %s: %s", plugin.getName(), material.name(), e.getMessage()));
+                    plugin.getLogger().warning(String.format("Failed to get historical item prices for material %s: %s", material.name(), e.getMessage()));
                     return;
                 }
 
                 if (!response.isSuccessful()) {
-                    plugin.getLogger().warning(String.format("[%s] - Failed to get historical item prices for material %s: %s", plugin.getName(), material.name(), response.getErrorResponse().getMessage()));
+                    plugin.getLogger().warning(String.format("Failed to get historical item prices for material %s: %s", material.name(), response.getErrorResponse().getMessage()));
                     return;
                 }
 
                 GRAPH_CACHE.put(key, createGraphImage(response));
                 isRendering.set(false);
+                plugin.getLogger().info(String.format("Rendered graph for material %s", material.name()));
             }
         });
     }
@@ -112,7 +120,7 @@ public class HistoricalGraphRenderer extends MapRenderer {
         XYSeries series = new XYSeries(material.name());
 
         for (int i = 1; i <= historicalItemPrices.size(); i++) {
-            HistoricalItemPriceResponse historicalItemPriceResponse = historicalItemPrices.get(i);
+            HistoricalItemPriceResponse historicalItemPriceResponse = historicalItemPrices.get(i - 1);
             series.add(i, historicalItemPriceResponse.getPrice());
         }
 
@@ -140,7 +148,7 @@ public class HistoricalGraphRenderer extends MapRenderer {
 
         NumberAxis xAxis = (NumberAxis) plot.getDomainAxis();
         xAxis.setLowerBound(1);
-        xAxis.setUpperBound(historicalItemPrices.size());
+        xAxis.setUpperBound(timeAmount);
         xAxis.setAutoTickUnitSelection(true);
         xAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 10));
         xAxis.setLabelInsets(RectangleInsets.ZERO_INSETS);

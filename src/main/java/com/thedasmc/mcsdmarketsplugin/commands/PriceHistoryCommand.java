@@ -2,7 +2,10 @@ package com.thedasmc.mcsdmarketsplugin.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
+import com.tchristofferson.betterscheduler.BSAsyncTask;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
+import com.thedasmc.mcsdmarketsplugin.dao.PriceHistoryMapDao;
+import com.thedasmc.mcsdmarketsplugin.model.PriceHistoryMap;
 import com.thedasmc.mcsdmarketsplugin.renderer.HistoricalGraphRenderer;
 import com.thedasmc.mcsdmarketsplugin.support.ItemUtil;
 import com.thedasmc.mcsdmarketsplugin.support.TimeUnit;
@@ -14,7 +17,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.map.MapView;
 
-import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.BASE_COMMAND;
@@ -24,6 +26,7 @@ import static com.thedasmc.mcsdmarketsplugin.support.Constants.PRICE_HISTORY_COM
 public class PriceHistoryCommand extends BaseCommand {
 
     @Dependency private MCSDMarkets plugin;
+    @Dependency private PriceHistoryMapDao priceHistoryMapDao;
 
     @Subcommand("pricehistory|ph")
     @CommandPermission(PRICE_HISTORY_COMMAND_PERMISSION)
@@ -53,31 +56,36 @@ public class PriceHistoryCommand extends BaseCommand {
         Material material = optionalMaterial.get();
         TimeUnit timeUnit = optionalTimeUnit.get();
 
+        int timeAmount = switch (timeUnit) {
+            case DAILY -> 7;
+            case HOURLY -> 24;
+            default -> throw new IllegalStateException("Unsupported time unit!");
+        };
+
+        HistoricalGraphRenderer graphRenderer = new HistoricalGraphRenderer(plugin, material, timeUnit.chronoUnit, timeAmount);
+
         ItemStack mapItemStack = new ItemStack(Material.FILLED_MAP, 1);
         MapMeta mapMeta = (MapMeta) mapItemStack.getItemMeta();
         mapMeta.setDisplayName(material.name() + " Price History (" + timeUnit.name().toLowerCase() + ")");
         MapView view = Bukkit.createMap(player.getWorld());
         view.getRenderers().forEach(view::removeRenderer);
-        view.addRenderer(getHistoricalGraphRenderer(timeUnit, material));
+        view.addRenderer(graphRenderer);
         mapMeta.setMapView(view);
         mapItemStack.setItemMeta(mapMeta);
 
         player.getInventory().addItem(mapItemStack);
+
+        PriceHistoryMap priceHistoryMap = new PriceHistoryMap();
+        priceHistoryMap.setId(view.getId());
+        priceHistoryMap.setMaterialName(material.name());
+        priceHistoryMap.setTimeUnit(timeUnit.name());
+        priceHistoryMap.setTimeAmount(timeAmount);
+
+        plugin.getTaskQueueRunner().scheduleAsyncTask(new BSAsyncTask(plugin) {
+            @Override
+            public void run() {
+                priceHistoryMapDao.save(priceHistoryMap);
+            }
+        });
     }
-
-    private HistoricalGraphRenderer getHistoricalGraphRenderer(TimeUnit timeUnit, Material material) {
-        ChronoUnit chronoUnit = timeUnit.chronoUnit;
-        int timeAmount;
-
-        if (chronoUnit == ChronoUnit.DAYS) {
-            timeAmount = 7;
-        } else if (chronoUnit == ChronoUnit.HOURS) {
-            timeAmount = 24;
-        } else {
-            throw new IllegalStateException("Unsupported time unit!");
-        }
-
-        return new HistoricalGraphRenderer(plugin, material, timeUnit.chronoUnit, timeAmount);
-    }
-
 }

@@ -1,4 +1,4 @@
-package com.thedasmc.mcsdmarketsplugin.dao.db;
+package com.thedasmc.mcsdmarketsplugin.dao.db.impl;
 
 import com.thedasmc.mcsdmarketsplugin.config.SessionFactoryManager;
 import com.thedasmc.mcsdmarketsplugin.dao.PlayerVirtualItemDao;
@@ -43,10 +43,5 @@ public class PlayerVirtualItemDbDao implements PlayerVirtualItemDao {
             session.remove(playerVirtualItem);
             transaction.commit();
         }
-    }
-
-    @Override
-    public void shutdown() {
-        sessionFactoryManager.shutdown();
     }
 }

@@ -3,6 +3,7 @@ package com.thedasmc.mcsdmarketsplugin.config;
 import com.mysql.cj.jdbc.Driver;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
+import com.thedasmc.mcsdmarketsplugin.model.PriceHistoryMap;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -25,6 +26,7 @@ public class SessionFactoryManager {
 
         Configuration cfg = new Configuration()
             .addAnnotatedClass(PlayerVirtualItem.class)
+            .addAnnotatedClass(PriceHistoryMap.class)
             .setProperty("hibernate.connection.provider_class", HikariCPConnectionProvider.class.getName())
             .setProperty("hibernate.transaction.jta.platform", NoJtaPlatform.class.getName())
             .setProperty("hibernate.hikari.minimumIdle", "1")

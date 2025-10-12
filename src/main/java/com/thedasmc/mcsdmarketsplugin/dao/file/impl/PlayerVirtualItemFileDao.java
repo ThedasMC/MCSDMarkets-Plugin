@@ -1,67 +1,35 @@
-package com.thedasmc.mcsdmarketsplugin.dao.file;
+package com.thedasmc.mcsdmarketsplugin.dao.file.impl;
 
 import com.google.common.reflect.TypeToken;
 import com.google.gson.*;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
 import com.thedasmc.mcsdmarketsplugin.dao.PlayerVirtualItemDao;
-import com.thedasmc.mcsdmarketsplugin.json.PlayerVirtualItemJsonConverter;
+import com.thedasmc.mcsdmarketsplugin.dao.file.FileDao;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
 import jakarta.persistence.OptimisticLockException;
-import jakarta.validation.Validation;
-import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
+public class PlayerVirtualItemFileDao extends FileDao<UUID> implements PlayerVirtualItemDao {
 
-    protected final Map<UUID, ReentrantLock> locks = new ConcurrentHashMap<>();
-    private final File savesDir;
-    private final ValidatorFactory validatorFactory;
-    private final Gson gson;
-
-    public PlayerVirtualItemFileDao(MCSDMarkets plugin) {
-        this.savesDir = new File(plugin.getDataFolder(), "saves");
+    public PlayerVirtualItemFileDao(MCSDMarkets plugin, Gson gson, ValidatorFactory validatorFactory) {
+        super(gson, validatorFactory, new File(plugin.getDataFolder(), "saves"));
         //noinspection ResultOfMethodCallIgnored
         this.savesDir.mkdir();
-
-        this.validatorFactory = Validation.byDefaultProvider()
-            .configure()
-            .messageInterpolator(new ParameterMessageInterpolator())
-            .buildValidatorFactory();
-
-        this.gson = new GsonBuilder()
-            .registerTypeAdapter(PlayerVirtualItem.class, new PlayerVirtualItemJsonConverter())
-            .create();
-
-        //Warmup validator.
-        //First validate calls on a class will be slow and can lag the main thread.
-        //After the initial validate calls additional calls to validate took < 1ms on local machine.
-        //Only needed for file dao since the db dao should always be accessed async.
-        new Thread(() -> {
-            Validator validator = validatorFactory.getValidator();
-            validator.validate(new PlayerVirtualItemPK());
-            validator.validate(new PlayerVirtualItem());
-        }).start();
     }
 
     @Override
     public Optional<PlayerVirtualItem> findById(PlayerVirtualItemPK pk) {
-        validatorFactory.getValidator().validate(pk);
+        validate(pk);
 
         try {
             return runWithLock(UUID.fromString(pk.getUuid()), () -> loadPlayerVirtualItems(UUID.fromString(pk.getUuid())).stream()
@@ -74,7 +42,7 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
 
     @Override
     public PlayerVirtualItem save(PlayerVirtualItem playerVirtualItem) {
-        validatorFactory.getValidator().validate(playerVirtualItem);
+        validate(playerVirtualItem);
 
         try {
             return runWithLock(UUID.fromString(playerVirtualItem.getId().getUuid()), () -> {
@@ -135,11 +103,6 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
         }
     }
 
-    @Override
-    public void shutdown() {
-        validatorFactory.close();
-    }
-
     private void deleteById(PlayerVirtualItemPK pk) throws IOException {
         Map<String, PlayerVirtualItem> playerVirtualItems = loadPlayerVirtualItems(UUID.fromString(pk.getUuid())).stream()
             .collect(Collectors.toMap(pvi -> pvi.getId().getMaterial(), Function.identity()));
@@ -172,29 +135,6 @@ public class PlayerVirtualItemFileDao implements PlayerVirtualItemDao {
             return;
 
         String json = gson.toJson(playerVirtualItems);
-        Files.writeString(file.toPath(), json, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-    }
-
-    //Run code locked on the specified uuid
-    private <T> T runWithLock(UUID uuid, Callable<T> action) throws Exception {
-        ReentrantLock lock = locks.computeIfAbsent(uuid, k -> new ReentrantLock());
-        lock.lock();
-
-        try {
-            return action.call();
-        } finally {
-            lock.unlock();
-            locks.compute(uuid, (k, currentLock) -> {
-                if (currentLock == lock && lock.tryLock()) {
-                    try {
-                        return null;
-                    } finally {
-                        lock.unlock();
-                    }
-                }
-
-                return currentLock;
-            });
-        }
+        saveContent(json, file);
     }
 }

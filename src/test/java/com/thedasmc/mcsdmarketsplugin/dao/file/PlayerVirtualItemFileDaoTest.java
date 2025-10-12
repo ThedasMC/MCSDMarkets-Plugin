@@ -1,8 +1,14 @@
 package com.thedasmc.mcsdmarketsplugin.dao.file;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
+import com.thedasmc.mcsdmarketsplugin.json.PlayerVirtualItemJsonConverter;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
 import jakarta.persistence.OptimisticLockException;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -22,6 +28,8 @@ import static org.mockito.Mockito.when;
 public class PlayerVirtualItemFileDaoTest {
 
     private static final String SAVES_DIR = "Test-Plugin-Directory";
+
+    private static ValidatorFactory validatorFactory;
     private static TestablePlayerVirtualItemFileDao dao;
 
     @BeforeAll
@@ -32,13 +40,22 @@ public class PlayerVirtualItemFileDaoTest {
         savesDir.mkdir();
         when(plugin.getDataFolder()).thenReturn(savesDir);
 
-        dao = new TestablePlayerVirtualItemFileDao(plugin);
+        Gson gson = new GsonBuilder()
+            .registerTypeAdapter(PlayerVirtualItem.class, new PlayerVirtualItemJsonConverter())
+            .create();
+
+        validatorFactory = Validation.byDefaultProvider()
+            .configure()
+            .messageInterpolator(new ParameterMessageInterpolator())
+            .buildValidatorFactory();
+
+        dao = new TestablePlayerVirtualItemFileDao(plugin, gson, validatorFactory);
     }
 
     @AfterAll
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void afterAll() {
-        dao.shutdown();
+        validatorFactory.close();
         File rootTestDir = new File(SAVES_DIR);
         File savesDir = new File(SAVES_DIR, "saves");
 
