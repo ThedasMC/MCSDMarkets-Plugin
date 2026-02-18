@@ -63,7 +63,7 @@ public class ViewCommand extends BaseCommand {
                     @Override
                     protected Void execute() {
                         if (player.isOnline())
-                            guiSupport.openMenu(player, itemPageResponse);
+                            guiSupport.openItemMenu(player, itemPageResponse);
 
                         return null;
                     }

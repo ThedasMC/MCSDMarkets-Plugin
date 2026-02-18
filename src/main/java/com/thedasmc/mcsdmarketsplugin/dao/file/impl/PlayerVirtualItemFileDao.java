@@ -7,6 +7,7 @@ import com.thedasmc.mcsdmarketsplugin.dao.PlayerVirtualItemDao;
 import com.thedasmc.mcsdmarketsplugin.dao.file.FileDao;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
+import com.thedasmc.mcsdmarketsplugin.support.PageResult;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ValidatorFactory;
 
@@ -38,6 +39,24 @@ public class PlayerVirtualItemFileDao extends FileDao<UUID> implements PlayerVir
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }
+    }
+
+    @Override
+    public PageResult<PlayerVirtualItem> findAllByPlayerId(String playerId, int page, int pageSize) {
+        UUID uuid = UUID.fromString(playerId);
+        List<PlayerVirtualItem> resultList;
+
+        try {
+            resultList = runWithLock(uuid, () -> loadPlayerVirtualItems(uuid).stream()
+                .sorted(Comparator.comparing(o -> o.getId().getMaterial()))
+                .skip((long) page * pageSize)
+                .limit(pageSize + 1)//Add 1 to determine if there is a next page
+                .toList());
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+
+        return new PageResult<>(resultList.subList(0, Math.min(pageSize, resultList.size())), resultList.size() > pageSize);
     }
 
     @Override
