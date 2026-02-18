@@ -6,7 +6,7 @@
 
     <groupId>com.thedasmc</groupId>
     <artifactId>MCSDMarkets-Plugin</artifactId>
-    <version>1.1-b-SNAPSHOT</version>
+    <version>1.0</version>
 
     <properties>
         <mockito.version>5.17.0</mockito.version>
