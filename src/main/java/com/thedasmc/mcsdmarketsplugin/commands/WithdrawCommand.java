@@ -26,7 +26,7 @@ import static com.thedasmc.mcsdmarketsplugin.support.Constants.BASE_COMMAND;
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.WITHDRAW_PERMISSION;
 
 @CommandAlias(BASE_COMMAND)
-public class WithdrawContractCommand extends BaseCommand {
+public class WithdrawCommand extends BaseCommand {
 
     @Dependency private MCSDMarkets plugin;
     @Dependency private PlayerVirtualItemDao playerVirtualItemDao;

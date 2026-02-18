@@ -202,7 +202,7 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerCommand(new CheckPriceCommand());
         commandManager.registerCommand(new BuyCommand());
         commandManager.registerCommand(new SellCommand());
-        commandManager.registerCommand(new WithdrawContractCommand());
+        commandManager.registerCommand(new WithdrawCommand());
         commandManager.registerCommand(new ViewCommand());
         commandManager.registerCommand(new SellInventoryCommand());
         commandManager.registerCommand(new PriceHistoryCommand());
