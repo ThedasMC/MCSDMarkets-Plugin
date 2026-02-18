@@ -23,7 +23,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.thedasmc.mcsdmarketsplugin.support.Constants.BASE_COMMAND;
-import static com.thedasmc.mcsdmarketsplugin.support.Constants.WITHDRAW_CONTRACT_PERMISSION;
+import static com.thedasmc.mcsdmarketsplugin.support.Constants.WITHDRAW_PERMISSION;
 
 @CommandAlias(BASE_COMMAND)
 public class WithdrawContractCommand extends BaseCommand {
@@ -32,12 +32,12 @@ public class WithdrawContractCommand extends BaseCommand {
     @Dependency private PlayerVirtualItemDao playerVirtualItemDao;
     @Dependency private TaskQueueRunner taskQueueRunner;
 
-    @Subcommand("contract withdraw")
-    @CommandPermission(WITHDRAW_CONTRACT_PERMISSION)
+    @Subcommand("withdraw")
+    @CommandPermission(WITHDRAW_PERMISSION)
     @Syntax("<material> <quantity>")
-    @Description("Take the material from the contract quantity and add to your inventory")
+    @Description("Withdraw items from your portfolio")
     @CommandCompletion("@materials")
-    public void handleWithdrawContractCommand(Player player, String materialName, @Conditions("gt0") final Integer quantity) {
+    public void handleWithdrawCommand(Player player, String materialName, @Conditions("gt0") final Integer quantity) {
         Optional<Material> optionalMaterial = ItemUtil.getMaterial(materialName);
 
         if (optionalMaterial.isEmpty()) {
@@ -83,7 +83,7 @@ public class WithdrawContractCommand extends BaseCommand {
                     }
                 });
 
-                int amountNotAddedToInv = futureAmountNotAddedToInv.get(Constants.MAX_SYN_THREAD_WAIT.toMillis(), TimeUnit.MILLISECONDS);
+                int amountNotAddedToInv = futureAmountNotAddedToInv.get(Constants.MAX_SYNC_THREAD_WAIT.toMillis(), TimeUnit.MILLISECONDS);
 
                 if (amountNotAddedToInv > 0) {
                     //While loop will allow retry if optimistic lock exception occurs

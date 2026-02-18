@@ -112,7 +112,7 @@ public class InventoryCloseEventListener implements Listener {
 
             try {
                 economyResponse = Bukkit.getScheduler().callSyncMethod(plugin, () -> economy.depositPlayer(player, saleValue.doubleValue()))
-                    .get(Constants.MAX_SYN_THREAD_WAIT.toMillis(), TimeUnit.MILLISECONDS);
+                    .get(Constants.MAX_SYNC_THREAD_WAIT.toMillis(), TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 Bukkit.getLogger().warning(String.format("[%s] - Interrupted while trying to deposit money to player with uuid %s. Amount: %s", plugin.getName(), uuid, saleValue.doubleValue()));

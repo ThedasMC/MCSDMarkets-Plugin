@@ -90,7 +90,7 @@ public class BuyCommand extends BaseCommand {
                         protected EconomyResponse execute() {
                             return economy.withdrawPlayer(player, cost.doubleValue());
                         }
-                    }).get(Constants.MAX_SYN_THREAD_WAIT.toMillis(), TimeUnit.MILLISECONDS);
+                    }).get(Constants.MAX_SYNC_THREAD_WAIT.toMillis(), TimeUnit.MILLISECONDS);
                 } catch (ExecutionException | InterruptedException | TimeoutException e) {
                     throw new RuntimeException("Failed to call sync method to withdraw player funds!", e);
                 }
