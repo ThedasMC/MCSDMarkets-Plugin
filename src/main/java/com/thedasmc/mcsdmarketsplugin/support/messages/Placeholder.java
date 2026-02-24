@@ -4,7 +4,8 @@ public enum Placeholder {
 
     ERROR("{error}"),
     PRICE("{price}"),
-    ITEM("{item}");
+    ITEM("{item}"),
+    QUANTITY("{quantity}");
 
     private final String value;
 

@@ -17,11 +17,18 @@ public class PlayerVirtualItem {
 
     @Column(nullable = false)
     @Positive(message = "Quantity must be > 0")
-    private Integer quantity;
+    private Integer quantity = 0;
 
     @Version
     @Column(nullable = false)
     private Integer version;
+
+    public PlayerVirtualItem() {
+    }
+
+    public PlayerVirtualItem(PlayerVirtualItemPK id) {
+        this.id = id;
+    }
 
     public PlayerVirtualItemPK getId() {
         return id;

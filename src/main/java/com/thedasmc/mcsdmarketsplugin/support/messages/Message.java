@@ -21,6 +21,7 @@ public enum Message {
     BATCH_SALE_SUCCESSFUL("batch-sale-successful"),
     PORTFOLIO_WITHDRAWAL("portfolio-withdrawal"),
     PARTIAL_WITHDRAWAL("partial-withdrawal"),
+    LIMIT_ORDER_CREATED("limit-order-created"),
     SAVE_ERROR("save-error"),
     NO_INVENTORY_SPACE("no-inventory-space");
 

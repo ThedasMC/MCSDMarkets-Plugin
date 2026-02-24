@@ -12,6 +12,7 @@ public class Constants {
     public static final String VIEW_COMMAND_PERMISSION = "mcsd.view";
     public static final String PRICE_HISTORY_COMMAND_PERMISSION = "mcsd.pricehistory";
     public static final String PORTFOLIO_COMMAND_PERMISSION = "mcsd.portfolio";
+    public static final String LIMIT_ORDER_PERMISSION = "mcsd.limitorder";
 
     public static final Duration MAX_SYNC_THREAD_WAIT = Duration.ofSeconds(10);
 

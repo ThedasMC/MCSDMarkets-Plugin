@@ -78,11 +78,14 @@ public class PlayerVirtualItemFileDao extends FileDao<UUID> implements PlayerVir
 
                     //A change to the entity was made, and saving would override those changes, throw exception
                     if (!Objects.equals(existingVersion, version))
-                        throw new OptimisticLockException();
+                        throw new OptimisticLockException("Version mismatch!");
 
                     //Up the version to indicate the state was changed
                     playerVirtualItem.setVersion(existingVersion + 1);
                 } else {
+                    if (playerVirtualItem.getVersion() != null)
+                        throw new OptimisticLockException("Expected null version, found " + playerVirtualItem.getVersion() + ". Object was probably deleted.");
+
                     playerVirtualItem.setVersion(1);
                 }
 
@@ -110,7 +113,7 @@ public class PlayerVirtualItemFileDao extends FileDao<UUID> implements PlayerVir
                 PlayerVirtualItem fetchedPlayerVirtualItem = optionalPlayerVirtualItem.get();
 
                 if (!fetchedPlayerVirtualItem.getVersion().equals(playerVirtualItem.getVersion()))
-                    throw new OptimisticLockException();
+                    throw new OptimisticLockException("Version mismatch!");
 
                 deleteById(fetchedPlayerVirtualItem.getId());
                 return null;

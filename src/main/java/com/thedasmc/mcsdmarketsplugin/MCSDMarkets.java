@@ -38,7 +38,6 @@ import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -173,7 +172,7 @@ public class MCSDMarkets extends JavaPlugin {
         List<String> materialNames = Arrays.stream(Material.values())
             .map(Material::name)
             .filter(name -> !name.startsWith("LEGACY_"))
-            .collect(Collectors.toCollection(LinkedList::new));
+            .toList();
 
         commandManager.getCommandCompletions().registerAsyncCompletion("materials", context -> materialNames.stream()
             .filter(name -> name.startsWith(context.getInput().trim().toUpperCase()))
@@ -195,8 +194,9 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerDependency(TaskQueueRunner.class, this.taskQueueRunner);
 
         //Conditions
-        commandManager.getCommandConditions().addCondition(Integer.class, "gt0", ((context, execContext, value) -> ensureGt0Condition(value != null ? value.longValue() : null)));
-        commandManager.getCommandConditions().addCondition(Long.class, "gt0", ((context, execContext, value) -> ensureGt0Condition(value)));
+        commandManager.getCommandConditions().addCondition(Integer.class, "gt0", ((context, execContext, value) -> ensureGt0Condition(value != null ? value.doubleValue() : null)));
+        commandManager.getCommandConditions().addCondition(Long.class, "gt0", ((context, execContext, value) -> ensureGt0Condition(value != null ? value.doubleValue() : null)));
+        commandManager.getCommandConditions().addCondition(Double.class, "gt0", (((context, execContext, value) -> ensureGt0Condition(value))));
 
         //Commands
         commandManager.registerCommand(new CheckPriceCommand());
@@ -207,6 +207,7 @@ public class MCSDMarkets extends JavaPlugin {
         commandManager.registerCommand(new SellInventoryCommand());
         commandManager.registerCommand(new PriceHistoryCommand());
         commandManager.registerCommand(new PortfolioCommand());
+        commandManager.registerCommand(new LimitOrderCommand());
     }
 
     private void initTaskQueueRunner() {
@@ -221,7 +222,7 @@ public class MCSDMarkets extends JavaPlugin {
         pluginManager.registerEvents(new MapInitializeEventListener(this, this.persistenceManager.getPriceHistoryMapDao()), this);
     }
 
-    private void ensureGt0Condition(Long value) {
+    private void ensureGt0Condition(Double value) {
         if (value != null && value <= 0)
             throw new ConditionFailedException(Message.INVALID_QUANTITY.getText());
     }
