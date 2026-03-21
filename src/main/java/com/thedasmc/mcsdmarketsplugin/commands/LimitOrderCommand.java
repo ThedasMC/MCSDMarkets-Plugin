@@ -269,6 +269,10 @@ public class LimitOrderCommand extends BaseCommand {
         });
     }
 
+    //TODO: View
+
+    //TODO: Cashout
+
     //Run sync
     private void refundInventory(Player player, Material material, int quantity, PlayerVirtualItem pvi) {
         if (!player.isOnline()) {
