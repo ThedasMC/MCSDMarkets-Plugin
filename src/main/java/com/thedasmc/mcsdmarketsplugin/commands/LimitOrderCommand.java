@@ -7,13 +7,17 @@ import com.tchristofferson.betterscheduler.BSCallable;
 import com.tchristofferson.betterscheduler.TaskQueueRunner;
 import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsapi.enums.TransactionType;
+import com.thedasmc.mcsdmarketsapi.request.LimitOrderPageRequest;
 import com.thedasmc.mcsdmarketsapi.request.SubmitLimitOrderRequest;
+import com.thedasmc.mcsdmarketsapi.response.impl.LimitOrderPageResponse;
+import com.thedasmc.mcsdmarketsapi.response.wrapper.LimitOrderPageResponseWrapper;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.LimitOrderResponseWrapper;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
 import com.thedasmc.mcsdmarketsplugin.dao.PlayerVirtualItemDao;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItem;
 import com.thedasmc.mcsdmarketsplugin.model.PlayerVirtualItemPK;
 import com.thedasmc.mcsdmarketsplugin.support.ItemUtil;
+import com.thedasmc.mcsdmarketsplugin.support.gui.GUISupport;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Message;
 import com.thedasmc.mcsdmarketsplugin.support.messages.MessageVariable;
 import com.thedasmc.mcsdmarketsplugin.support.messages.Placeholder;
@@ -43,6 +47,7 @@ public class LimitOrderCommand extends BaseCommand {
     @Dependency private MCSDMarketsAPI mcsdMarketsAPI;
     @Dependency private TaskQueueRunner taskQueueRunner;
     @Dependency private PlayerVirtualItemDao playerVirtualItemDao;
+    @Dependency private GUISupport guiSupport;
 
     @Subcommand("limitorder|lo buy")
     @CommandPermission(LIMIT_ORDER_PERMISSION)
@@ -269,7 +274,46 @@ public class LimitOrderCommand extends BaseCommand {
         });
     }
 
-    //TODO: View
+    @Subcommand("limitorder|lo view|v")
+    @CommandPermission(LIMIT_ORDER_PERMISSION)
+    @Description("View your limit orders")
+    public void handleViewLimitOrders(Player player, @Conditions("gt0") @Default("1") final Integer page) {
+        UUID playerId = player.getUniqueId();
+
+        taskQueueRunner.scheduleAsyncTask(new BSAsyncTask(plugin) {
+            @Override
+            public void run() {
+                LimitOrderPageRequest request = new LimitOrderPageRequest();
+                request.setPlayerId(playerId);
+                request.setPage(page - 1);//API first page is 0, command first page is 1
+                request.setPageSize(GUISupport.INVENTORY_SIZE - 9);
+
+                LimitOrderPageResponseWrapper limitOrders;
+
+                try {
+                    limitOrders = mcsdMarketsAPI.getLimitOrders(request);
+                } catch (IOException e) {
+                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+                    return;
+                }
+
+                if (!limitOrders.isSuccessful()) {
+                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, limitOrders.getErrorResponse().getMessage())));
+                    return;
+                }
+
+                LimitOrderPageResponse response = limitOrders.getSuccessfulResponse();
+
+                taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
+                    @Override
+                    protected Void execute() {
+                        guiSupport.openLimitOrdersMenu(player, response, page);
+                        return null;
+                    }
+                });
+            }
+        });
+    }
 
     //TODO: Cashout
 
