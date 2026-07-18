@@ -15,6 +15,8 @@ public enum Message {
     INVALID_TIME_UNIT("invalid-time-unit"),
     VAULT_ERROR("vault-error"),
     INSUFFICIENT_QUANTITY("insufficient-quantity"),
+    SAVE_ERROR("save-error"),
+    NO_INVENTORY_SPACE("no-inventory-space"),
     CHECK_PRICE("check-price"),
     PURCHASE("purchase-successful"),
     SALE_SUCCESSFUL("sale-successful"),
@@ -22,8 +24,8 @@ public enum Message {
     PORTFOLIO_WITHDRAWAL("portfolio-withdrawal"),
     PARTIAL_WITHDRAWAL("partial-withdrawal"),
     LIMIT_ORDER_CREATED("limit-order-created"),
-    SAVE_ERROR("save-error"),
-    NO_INVENTORY_SPACE("no-inventory-space");
+    CASHOUT_SINGLE_SUCCESSFUL("cashout-single-successful"),
+    CASHOUT_MULTI_SUCCESSFUL("cashout-multi-successful");
 
     private static FileConfiguration messagesConfig;
 

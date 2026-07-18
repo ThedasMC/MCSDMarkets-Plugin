@@ -9,7 +9,9 @@ import com.thedasmc.mcsdmarketsapi.MCSDMarketsAPI;
 import com.thedasmc.mcsdmarketsapi.enums.TransactionType;
 import com.thedasmc.mcsdmarketsapi.request.LimitOrderPageRequest;
 import com.thedasmc.mcsdmarketsapi.request.SubmitLimitOrderRequest;
+import com.thedasmc.mcsdmarketsapi.response.impl.LimitOrderCashoutResponse;
 import com.thedasmc.mcsdmarketsapi.response.impl.LimitOrderPageResponse;
+import com.thedasmc.mcsdmarketsapi.response.wrapper.LimitOrderCashoutResponseWrapper;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.LimitOrderPageResponseWrapper;
 import com.thedasmc.mcsdmarketsapi.response.wrapper.LimitOrderResponseWrapper;
 import com.thedasmc.mcsdmarketsplugin.MCSDMarkets;
@@ -315,7 +317,58 @@ public class LimitOrderCommand extends BaseCommand {
         });
     }
 
-    //TODO: Cashout
+    //TODO: Test in game
+    @Subcommand("limitorder|lo cashout|co|c")
+    @CommandPermission(LIMIT_ORDER_PERMISSION)
+    @Description("Cashout your limit order(s)")
+    public void handleCashout(Player player, @Conditions("gt0") @co.aikar.commands.annotation.Optional final Long limitOrderId) {
+        final boolean cashoutAll = limitOrderId == null;
+
+        taskQueueRunner.scheduleAsyncTask(new BSAsyncTask(plugin) {
+            @Override
+            public void run() {
+                LimitOrderCashoutResponseWrapper limitOrderCashoutResponse;
+
+                try {
+                    if (cashoutAll) {
+                        limitOrderCashoutResponse = mcsdMarketsAPI.cashoutAllLimitOrders(player.getUniqueId());
+                    } else {
+                        limitOrderCashoutResponse = mcsdMarketsAPI.cashoutLimitOrder(limitOrderId, player.getUniqueId());
+                    }
+                } catch (IOException e) {
+                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, e.getMessage())));
+                    return;
+                }
+
+                if (!limitOrderCashoutResponse.isSuccessful()) {
+                    player.sendMessage(Message.WEB_ERROR.getText(new MessageVariable(Placeholder.ERROR, limitOrderCashoutResponse.getErrorResponse().getMessage())));
+                    return;
+                }
+
+                LimitOrderCashoutResponse response = limitOrderCashoutResponse.getSuccessfulResponse();
+                BigDecimal cashoutAmount = response.getCashoutAmount().compareTo(BigDecimal.valueOf(Double.MAX_VALUE)) > 0 ?
+                        BigDecimal.valueOf(Double.MAX_VALUE) : response.getCashoutAmount();
+
+                //TODO: If this becomes an issue where vault keeps failing, create confirmation system for cashouts similar to how transactions for buy/sells work
+                taskQueueRunner.submitSyncTask(new BSCallable<Void>() {
+                    @Override
+                    protected Void execute() {
+                        EconomyResponse economyResponse = economy.depositPlayer(player, cashoutAmount.doubleValue());
+
+                        if (!economyResponse.transactionSuccess()) {
+                            plugin.getLogger().warning(String.format("Limit order cashout for %s failed for player with id %s. These funds should be manually be deposited into the player's account. Vault failure: %s", cashoutAmount, player.getUniqueId(), economyResponse.errorMessage));
+                            player.sendMessage(Message.VAULT_ERROR.getText(new MessageVariable(Placeholder.ERROR, economyResponse.errorMessage)));
+                        } else {
+                            Message message = cashoutAll ? Message.CASHOUT_MULTI_SUCCESSFUL : Message.CASHOUT_SINGLE_SUCCESSFUL;
+                            player.sendMessage(message.getText(new MessageVariable(Placeholder.PRICE, cashoutAmount.toPlainString())));
+                        }
+
+                        return null;
+                    }
+                });
+            }
+        });
+    }
 
     //Run sync
     private void refundInventory(Player player, Material material, int quantity, PlayerVirtualItem pvi) {
